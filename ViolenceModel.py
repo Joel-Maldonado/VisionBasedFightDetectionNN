@@ -6,15 +6,15 @@ import os
 from tensorflow.keras import layers
 
 # GPUs
-# gpus = tf.config.experimental.list_physical_devices('GPU')
-# for gpu in gpus:
-#   tf.config.experimental.set_memory_growth(gpu, True)
+gpus = tf.config.experimental.list_physical_devices('GPU')
+for gpu in gpus:
+  tf.config.experimental.set_memory_growth(gpu, True)
 
 print(tf.config.list_physical_devices())
 strategy = tf.distribute.MirroredStrategy()
 
 # Random seed to ensure reproducibility
-SEED = 100
+SEED = 24
 tf.random.set_seed(SEED)
 
 # Constants
@@ -24,8 +24,8 @@ BATCH_SIZE = 16
 CHANNELS = 1
 AUTOTUNE = tf.data.experimental.AUTOTUNE
 
-TRAIN_RECORD_DIR = 'Data/violence_video_train.tfrecord'
-VAL_RECORD_DIR = 'Data/violence_video_val.tfrecord'
+TRAIN_RECORD_DIR = 'violence_video_train.tfrecord'
+VAL_RECORD_DIR = 'violence_video_test.tfrecord'
 
 def parse_tfrecord(example):
     features = {
@@ -42,38 +42,6 @@ def preprocess(video, label):
     video = video / 255.0
     return video, label
 
-DATASET_SIZE = 2000
-
-# train = tf.data.TFRecordDataset(TRAIN_RECORD_DIR)
-# val = tf.data.TFRecordDataset(VAL_RECORD_DIR)
-
-# dataset = train.concatenate(val)
-# dataset = dataset.map(parse_tfrecord)
-# dataset = dataset.map(preprocess)
-# dataset = dataset.shuffle(buffer_size=DATASET_SIZE)
-
-
-# TRAIN_SPLIT = int(0.75 * DATASET_SIZE)
-# TEST_SPLIT = int(0.15 * DATASET_SIZE)
-# VAL_SPLIT = int(0.15 * DATASET_SIZE)
-
-# train_dataset = dataset.take(TRAIN_SPLIT)
-# rest_dataset = dataset.skip(TRAIN_SPLIT)
-# test_dataset = rest_dataset.take(TEST_SPLIT)
-# val_dataset = rest_dataset.skip(VAL_SPLIT)
-
-# train_dataset = train_dataset.shuffle(buffer_size=TRAIN_SPLIT)
-
-# train_dataset = train_dataset.batch(BATCH_SIZE)
-# test_dataset = test_dataset.batch(BATCH_SIZE)
-# val_dataset = val_dataset.batch(BATCH_SIZE)
-
-# train_dataset = train_dataset.prefetch(AUTOTUNE)
-# val_dataset = val_dataset.prefetch(AUTOTUNE)
-
-# train_dataset = train_dataset.cache()
-# val_dataset = val_dataset.cache()
-
 train_dataset = tf.data.TFRecordDataset(TRAIN_RECORD_DIR)
 train_dataset = train_dataset.map(parse_tfrecord)
 train_dataset = train_dataset.map(preprocess)
@@ -83,15 +51,27 @@ val_dataset = tf.data.TFRecordDataset(VAL_RECORD_DIR)
 val_dataset = val_dataset.map(parse_tfrecord)
 val_dataset = val_dataset.map(preprocess)
 
-train_dataset = train_dataset.shuffle(buffer_size=1600)
-val_dataset = val_dataset.shuffle(buffer_size=400)
+
+# dataset = train_dataset.concatenate(val_dataset)
+# dataset = dataset.shuffle(buffer_size=2000, reshuffle_each_iteration=False)
+
+# TRAIN_SIZE = int(0.8 * 2000)
+# print(TRAIN_SIZE)
+
+# train_dataset = dataset.take(TRAIN_SIZE)
+# val_dataset = dataset.skip(TRAIN_SIZE)
+
+DATASET_SIZE = 2300
+
+train_dataset = train_dataset.shuffle(buffer_size=1840, reshuffle_each_iteration=True)
+val_dataset = val_dataset.shuffle(buffer_size=460, reshuffle_each_iteration=True)
 
 train_dataset = train_dataset.batch(BATCH_SIZE)
 val_dataset = val_dataset.batch(BATCH_SIZE)
 
 
 train_dataset = train_dataset.prefetch(AUTOTUNE)
-val_dataset = val_dataset.prefetch(AUTOTUNE)
+# val_dataset = val_dataset.prefetch(AUTOTUNE)
 
 # train_dataset = train_dataset.cache()
 # val_dataset = val_dataset.cache()
@@ -100,6 +80,7 @@ class RandomFlipVideo(tf.keras.layers.Layer):
   def __init__(self, **kwargs):
     super(RandomFlipVideo, self).__init__()
 
+  @tf.function
   def call(self, inputs):
     if tf.random.uniform(()) > 0.5:
       return tf.map_fn(lambda x: tf.image.flip_left_right(x), inputs)
@@ -124,62 +105,73 @@ class RandomRotationVideo(tf.keras.layers.Layer):
 # Model Creation
 def create_model():
 
-    CONV_NEURONS = 148
-    LSTM_NEURONS = 100
-    DENSE_NEURONS = 256
+    CONV_NEURONS = 32
     DROPOUT = 0.5
-    N_LAYERS = 3
+    LR = 0.001
+    ROTATION_MAX = 0.3
+    DENSE_UNITS = 128
+    N_CONV_LAYERS = 2
+    N_DENSE_LAYERS = 3
+    BATCH_NORM = True
 
     model = tf.keras.models.Sequential()
 
 
     model.add(layers.InputLayer(input_shape=(N_FRAMES, IMG_SIZE, IMG_SIZE, CHANNELS)))
+
     model.add(RandomFlipVideo())
     model.add(RandomRotationVideo(0.3))
-    
-    # for i in range(N_LAYERS):
-    #     model.add(layers.TimeDistributed(layers.Conv2D(CONV_NEURONS, (3, 3), activation='relu')))
-    #     model.add(layers.BatchNormalization())
-    #     model.add(layers.TimeDistributed(layers.Conv2D(CONV_NEURONS, (3, 3), activation='relu')))
-    #     model.add(layers.BatchNormalization())
-    #     model.add(layers.TimeDistributed(layers.MaxPooling2D((2, 2))))
-    
 
-    # model.add(layers.TimeDistributed(layers.Flatten()))
+    for i in range(N_CONV_LAYERS):
+      model.add(layers.TimeDistributed(layers.Conv2D(CONV_NEURONS, (3, 3), kernel_initializer='he_normal', activation='relu')))
 
-    # model.add(layers.LSTM(LSTM_NEURONS, return_sequences=True))
-    # # model.add(layers.TimeDistributed(layers.BatchNormalization()))
+      if BATCH_NORM:
+        model.add(layers.BatchNormalization())
 
-    # model.add(layers.LSTM(LSTM_NEURONS, return_sequences=True))
-    # # model.add(layers.TimeDistributed(layers.BatchNormalization()))
-    
-    # model.add(layers.LSTM(LSTM_NEURONS, return_sequences=True))
-    # # model.add(layers.TimeDistributed(layers.BatchNormalization()))
-    
-    # model.add(layers.TimeDistributed(layers.Dense(DENSE_NEURONS, activation='relu')))
-    # model.add(layers.TimeDistributed(layers.Dropout(DROPOUT)))
-
-    # model.add(layers.TimeDistributed(layers.Dense(DENSE_NEURONS, activation='relu')))
-    # model.add(layers.TimeDistributed(layers.Dropout(DROPOUT)))
-    # model.add(layers.TimeDistributed(layers.Dense(DENSE_NEURONS, activation='relu')))
-    # model.add(layers.TimeDistributed(layers.Dropout(DROPOUT)))
-
-    # model.add(layers.TimeDistributed(layers.Dense(1, activation='sigmoid')))
-
-    model.add(layers.ConvLSTM2D(
-        filters=16, 
-        kernel_size=3,
-        padding='same'))
-    model.add(layers.TimeDistributed(layers.Dropout(0.5)))
+      model.add(layers.TimeDistributed(layers.Conv2D(CONV_NEURONS, (3, 3), kernel_initializer='he_normal', activation='relu')))
+      
+      if BATCH_NORM:
+        model.add(layers.BatchNormalization())
+        
+      model.add(layers.TimeDistributed(layers.MaxPooling2D()))
 
     model.add(layers.Flatten())
+    
+    for i in range(N_DENSE_LAYERS):
+      model.add(layers.Dense(DENSE_UNITS, activation='relu'))
+      if BATCH_NORM:
+        model.add(layers.BatchNormalization())
+      
+      model.add(layers.Dropout(DROPOUT))
 
-    model.add(layers.Dense(224))
-    model.add(layers.Dropout(0.5))
+    model.add(layers.Dense(1, activation='sigmoid'))
+
+
+
+
+
+    # model.add(layers.InputLayer(input_shape=(N_FRAMES, IMG_SIZE, IMG_SIZE, CHANNELS)))
+
+    # model.add(RandomFlipVideo())
+    # model.add(RandomRotationVideo(0.3))
+
+    # model.add(layers.TimeDistributed(layers.Conv2D(16, (3, 3), kernel_initializer='he_normal', activation='relu', padding='same')))
+    # model.add(layers.TimeDistributed(layers.MaxPooling2D()))
+
+    # model.add(layers.TimeDistributed(layers.Conv2D(16, (3, 3), kernel_initializer='he_normal', activation='relu', padding='same')))
+    # model.add(layers.TimeDistributed(layers.MaxPooling2D()))
+
+    # model.add(layers.Flatten())
+
+    # model.add(layers.Dense(256, activation='relu'))
+    # model.add(layers.Dropout(DROPOUT))
+
+    # model.add(layers.Dense(1, activation='sigmoid'))
+
 
     model.compile(
         loss='binary_crossentropy',
-        optimizer=tf.keras.optimizers.Adam(),
+        optimizer= tf.keras.optimizers.Adam(),
         metrics=['accuracy'],
     )
 
@@ -188,7 +180,7 @@ def create_model():
 import tensorflow_addons as tfa
 
 
-early_stopper = tf.keras.callbacks.EarlyStopping('val_accuracy', patience=20, restore_best_weights=True)
+early_stopper = tf.keras.callbacks.EarlyStopping('val_accuracy', patience=30, restore_best_weights=True)
 reduce_lr_on_plataeu = tf.keras.callbacks.ReduceLROnPlateau(monitor='val_accuracy', factor=0.2, patience=5)
 
 from datetime import datetime
@@ -202,7 +194,7 @@ with strategy.scope():
 
 history = model.fit(train_dataset, 
                     validation_data=val_dataset, 
-                    epochs=25, 
+                    epochs=30, 
                     callbacks=[check_point, early_stopper, reduce_lr_on_plataeu, tf.keras.callbacks.TensorBoard("tb_logs")], 
                     use_multiprocessing=True, 
                     workers=16,
@@ -216,7 +208,3 @@ model.save(f'PersonDetection_temp.h5')
 metrics = model.evaluate(val_dataset)
 
 model.save(f'Models/Violence_Acc_{metrics[1]}.h5')
-
-import pickle
-with open('history_pickle.pkl', 'w') as f:
-  pickle.dump(history, f)

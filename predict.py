@@ -6,12 +6,14 @@ import os
 # VIDEO_PATH = '/u/jruiz_intern/jruiz/Datasets/fight-detection-surv-dataset-master/fight/fi014.mp4'
 VIDEO_PATH = '/u/jruiz_intern/jruiz/Datasets/fight-detection-surv-dataset-master/noFight/nofi026.mp4'
 
-VIOLENCE_MODEL_PATH = 'Models/violence_model_acc_96.h5'
+# VIOLENCE_MODEL_PATH = 'Models/violence_model_acc_96.h5'
+VIOLENCE_MODEL_PATH = '/u/jruiz_intern/jruiz/Downloads/keras_model.h5'
 
+model = tf.keras.models.load_model(VIOLENCE_MODEL_PATH)
 
 
 IMG_SIZE = 224
-N_FRAMES = 20
+N_FRAMES = 64
 
 def get_frames(cap):
     frames = []
@@ -39,6 +41,6 @@ frames = tf.cast(frames, tf.float32)
 frames = tf.reshape(frames, (1, N_FRAMES, IMG_SIZE, IMG_SIZE, 1))
 frames = frames / 255.0
 
-prediction = VIOLENCE_MODEL.predict(frames)
+prediction = model.predict(frames)
 print(f'Prediction: {prediction[0][0]}')
 print('Violent' if round(prediction[0][0]) else 'Non-Violent')

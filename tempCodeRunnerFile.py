@@ -1,4 +1,4 @@
-
-# frames = tf.cast(frames, tf.float32)
-# frames = tf.reshape(frames, (1, N_FRAMES, IMG_SIZE, IMG_SIZE, 1))
-# frames = frames / 255.0
+IN_VIDEOS))
+# print(len(TEST_VIDEOS))
+# print(TRAIN_VIDEOS[0])
+# print(TEST_VIDEOS[0])

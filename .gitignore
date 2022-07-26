@@ -132,3 +132,8 @@ Data/
 Models/
 Checkpoints/
 Predictions/
+tb_logs/
+untitled_project/
+
+*.tfrecord
+*.h5

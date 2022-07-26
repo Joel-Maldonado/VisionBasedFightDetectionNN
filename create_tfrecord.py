@@ -1,13 +1,6 @@
 import cv2
-from matplotlib.pyplot import step
-import numpy as np
-import pandas as pd
 import tensorflow as tf
 import os
-import tensorflow_addons as tfa
-import tensorflow_io as tfio
-from tensorflow.keras import layers
-
 # GPUs
 # gpus = tf.config.experimental.list_physical_devices('GPU')
 # for gpu in gpus:
@@ -27,8 +20,8 @@ BATCH_SIZE = 1
 CHANNELS = 1
 AUTOTUNE = tf.data.experimental.AUTOTUNE
 
-V_DIR = '/u/jruiz_intern/jruiz/Datasets/RWF/val/Fight'
-NV_DIR = '/u/jruiz_intern/jruiz/Datasets/RWF/val/NonFight'
+V_DIR = 'CombinedViolence/test/1_violent'
+NV_DIR = 'CombinedViolence/test/0_non_violent'
 
 def get_frames(vid_path):
     cap = cv2.VideoCapture(vid_path)
@@ -80,7 +73,7 @@ def wrap_bytes(value):
 def wrap_int64(value):
     return tf.train.Feature(int64_list=tf.train.Int64List(value=[value]))
 
-with tf.io.TFRecordWriter('violence_video_val.tfrecord') as tfrecord:
+with tf.io.TFRecordWriter('violence_video_test.tfrecord') as tfrecord:
     for i, (frame, label) in enumerate(zip(videos, labels)):
         example = tf.train.Example(features=tf.train.Features(feature={
             'feature': wrap_bytes(frame.numpy().tobytes()),
