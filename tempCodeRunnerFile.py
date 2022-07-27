@@ -1,4 +1,6 @@
-IN_VIDEOS))
-# print(len(TEST_VIDEOS))
-# print(TRAIN_VIDEOS[0])
-# print(TEST_VIDEOS[0])
+
+  for img in vid:
+    print(img)
+    img = cv2.cvtColor(img.numpy(), cv2.COLOR_RGB2BGR)
+    cv2.imshow('video', img)
+    cv2.waitKey(0)

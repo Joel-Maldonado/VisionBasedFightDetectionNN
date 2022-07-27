@@ -101,8 +101,8 @@ def create_model(hp):
     LR = hp.Float('lr', 0.0001, 0.006)
     ROTATION_MAX = hp.Float('rotation_max', 0.0, 0.5)
     DENSE_UNITS = hp.Int('dense_units', 0, 128)
-    N_CONV_LAYERS = hp.Int('n_conv_layers', 2, 6)
-    N_DENSE_LAYERS = hp.Int('n_dense_layers', 0, 5)
+    N_CONV_LAYERS = hp.Int('n_conv_layers', 2, 5)
+    N_DENSE_LAYERS = hp.Int('n_dense_layers', 0, 4)
     BATCH_NORM = hp.Int('batch_norm', 0, 1)
     KERNEL_INITIALIZER = hp.Choice('kernel_initializer', ['glorot_uniform', 'glorot_normal', 'he_uniform', 'he_normal'])
 

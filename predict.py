@@ -7,7 +7,7 @@ import os
 VIDEO_PATH = '/u/jruiz_intern/jruiz/Datasets/fight-detection-surv-dataset-master/noFight/nofi026.mp4'
 
 # VIOLENCE_MODEL_PATH = 'Models/violence_model_acc_96.h5'
-VIOLENCE_MODEL_PATH = '/u/jruiz_intern/jruiz/Downloads/keras_model.h5'
+VIOLENCE_MODEL_PATH = 'Models/Violence_Acc_0.75.h5'
 
 model = tf.keras.models.load_model(VIOLENCE_MODEL_PATH)
 

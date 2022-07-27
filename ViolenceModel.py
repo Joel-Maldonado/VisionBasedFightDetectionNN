@@ -6,9 +6,9 @@ import os
 from tensorflow.keras import layers
 
 # GPUs
-gpus = tf.config.experimental.list_physical_devices('GPU')
-for gpu in gpus:
-  tf.config.experimental.set_memory_growth(gpu, True)
+# gpus = tf.config.experimental.list_physical_devices('GPU')
+# for gpu in gpus:
+#   tf.config.experimental.set_memory_growth(gpu, True)
 
 print(tf.config.list_physical_devices())
 strategy = tf.distribute.MirroredStrategy()
@@ -105,8 +105,8 @@ class RandomRotationVideo(tf.keras.layers.Layer):
 # Model Creation
 def create_model():
 
-    CONV_NEURONS = 32
-    DROPOUT = 0.5
+    CONV_NEURONS = 16
+    DROPOUT = 0
     LR = 0.001
     ROTATION_MAX = 0.3
     DENSE_UNITS = 128
@@ -119,33 +119,23 @@ def create_model():
 
     model.add(layers.InputLayer(input_shape=(N_FRAMES, IMG_SIZE, IMG_SIZE, CHANNELS)))
 
+    # Add image augmentation layers 
     model.add(RandomFlipVideo())
-    model.add(RandomRotationVideo(0.3))
+    model.add(RandomRotationVideo(0.5))
 
-    for i in range(N_CONV_LAYERS):
-      model.add(layers.TimeDistributed(layers.Conv2D(CONV_NEURONS, (3, 3), kernel_initializer='he_normal', activation='relu')))
 
-      if BATCH_NORM:
-        model.add(layers.BatchNormalization())
+    model.add(layers.TimeDistributed(layers.Conv2D(CONV_NEURONS, (3, 3), activation='relu', padding='same')))
+    model.add(layers.TimeDistributed(layers.Conv2D(CONV_NEURONS, (3, 3), activation='relu', padding='same')))
 
-      model.add(layers.TimeDistributed(layers.Conv2D(CONV_NEURONS, (3, 3), kernel_initializer='he_normal', activation='relu')))
-      
-      if BATCH_NORM:
-        model.add(layers.BatchNormalization())
-        
-      model.add(layers.TimeDistributed(layers.MaxPooling2D()))
+    model.add(layers.TimeDistributed(layers.MaxPooling2D((2, 2))))
 
-    model.add(layers.Flatten())
-    
-    for i in range(N_DENSE_LAYERS):
-      model.add(layers.Dense(DENSE_UNITS, activation='relu'))
-      if BATCH_NORM:
-        model.add(layers.BatchNormalization())
-      
-      model.add(layers.Dropout(DROPOUT))
+    # Turn to dense layers
+    model.add(layers.TimeDistributed(layers.Flatten()))
 
-    model.add(layers.Dense(1, activation='sigmoid'))
 
+    model.add(layers.TimeDistributed(layers.Dense(DENSE_UNITS, activation='relu')))
+
+    model.add(layers.TimeDistributed(layers.Dense(1, activation='sigmoid')))
 
 
 
@@ -171,7 +161,7 @@ def create_model():
 
     model.compile(
         loss='binary_crossentropy',
-        optimizer= tf.keras.optimizers.Adam(),
+        optimizer= tf.keras.optimizers.Nadam(0.001),
         metrics=['accuracy'],
     )
 
