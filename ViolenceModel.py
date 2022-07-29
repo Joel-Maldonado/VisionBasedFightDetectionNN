@@ -105,14 +105,21 @@ class RandomRotationVideo(tf.keras.layers.Layer):
 # Model Creation
 def create_model():
 
-    CONV_NEURONS = 16
-    DROPOUT = 0
-    LR = 0.001
-    ROTATION_MAX = 0.3
+    # 4                 |50                |conv_neurons
+    # 0.24202           |0.42102           |dropout
+    # 0.0001            |0.0001            |lr
+    # 0.17367           |0.36764           |rotation_max
+    # 128               |128               |dense_units
+    # 4                 |4                 |n_conv_layers
+    # adam   
+
+
+    CONV_NEURONS = 4
+    DROPOUT = 0.24202
+    LR = 0.0001
+    ROTATION_MAX = 0.17
     DENSE_UNITS = 128
-    N_CONV_LAYERS = 2
-    N_DENSE_LAYERS = 3
-    BATCH_NORM = True
+    N_CONV_LAYERS = 4
 
     model = tf.keras.models.Sequential()
 
@@ -124,8 +131,8 @@ def create_model():
     model.add(RandomRotationVideo(0.5))
 
 
-    model.add(layers.TimeDistributed(layers.Conv2D(CONV_NEURONS, (3, 3), activation='relu', padding='same')))
-    model.add(layers.TimeDistributed(layers.Conv2D(CONV_NEURONS, (3, 3), activation='relu', padding='same')))
+    model.add(layers.TimeDistributed(layers.Conv2D(CONV_NEURONS, (3, 3), activation='relu', kernel_initializer='he_normal', padding='same')))
+    model.add(layers.TimeDistributed(layers.Conv2D(CONV_NEURONS, (3, 3), activation='relu', kernel_initializer='he_normal', padding='same')))
 
     model.add(layers.TimeDistributed(layers.MaxPooling2D((2, 2))))
 

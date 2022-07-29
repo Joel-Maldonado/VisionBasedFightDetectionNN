@@ -16,30 +16,30 @@ for gpu in gpus:
 print(tf.config.list_physical_devices())
 strategy = tf.distribute.MirroredStrategy()
 
-# Random seed to ensure reproducibility
-SEED = 24
+SEED = 435
 tf.random.set_seed(SEED)
 
 # Constants
 IMG_SIZE = 224
 N_FRAMES = 20
 BATCH_SIZE = 16
-CHANNELS = 1
+CHANNELS = 5
 AUTOTUNE = tf.data.experimental.AUTOTUNE
 
-TRAIN_RECORD_DIR = 'violence_video_train.tfrecord'
-VAL_RECORD_DIR = 'violence_video_test.tfrecord'
+TRAIN_RECORD_DIR = 'violence_rgb_opt_train.tfrecord'
+VAL_RECORD_DIR = 'violence_rgb_opt_val.tfrecord'
 
 def parse_tfrecord(example):
-    features = {
-        'label': tf.io.FixedLenFeature([], tf.int64),
-        'feature': tf.io.FixedLenFeature([], tf.string)
-    }
-    example = tf.io.parse_single_example(example, features)
-    video = tf.io.decode_raw(example['feature'], tf.float32)
-    video = tf.reshape(video, (N_FRAMES, IMG_SIZE, IMG_SIZE, CHANNELS))
-    label = tf.cast(example['label'], tf.uint8)
-    return video, label
+  features = {
+    'label': tf.io.FixedLenFeature([], tf.int64),
+    'video': tf.io.FixedLenFeature([], tf.string)
+  }
+  example = tf.io.parse_single_example(example, features)
+  # video = tf.io.decode_raw(example['video'], tf.uint8)
+  video = tf.io.decode_raw(example['video'], tf.float32)
+  video = tf.reshape(video, (N_FRAMES, IMG_SIZE, IMG_SIZE, 5))
+  label = tf.cast(example['label'], tf.uint8)
+  return video, label
 
 def preprocess(video, label):
     video = video / 255.0
@@ -54,11 +54,8 @@ val_dataset = tf.data.TFRecordDataset(VAL_RECORD_DIR)
 val_dataset = val_dataset.map(parse_tfrecord)
 val_dataset = val_dataset.map(preprocess)
 
+train_dataset = train_dataset.shuffle(buffer_size=1600, reshuffle_each_iteration=True)
 
-DATASET_SIZE = 2300
-
-train_dataset = train_dataset.shuffle(buffer_size=1840, reshuffle_each_iteration=True)
-val_dataset = val_dataset.shuffle(buffer_size=460, reshuffle_each_iteration=True)
 
 train_dataset = train_dataset.batch(BATCH_SIZE)
 val_dataset = val_dataset.batch(BATCH_SIZE)
@@ -81,12 +78,24 @@ class RandomRotationVideo(tf.keras.layers.Layer):
     super(RandomRotationVideo, self).__init__()
     self.max_rotation = max_rotation
 
+  @tf.function
   def call(self, inputs):
-    return tf.map_fn(self.rotate, inputs)
+    random_factor = tf.random.uniform(()) * self.max_rotation * 2 - self.max_rotation
+    return tf.map_fn(lambda x: tfa.image.rotate(x, random_factor), inputs)
     
-  def rotate(self, video):
-    random_factor = self.max_rotation * self.max_rotation * 2 - self.max_rotation
-    return tfa.image.rotate(video, random_factor)
+  def get_config(self):
+    config = super().get_config().copy()
+    return config
+
+class RandomBlurVideo(tf.keras.layers.Layer):
+  def __init__(self, max_shift=10, **kwargs):
+    super(RandomBlurVideo, self).__init__()
+    self.max_shift = max_shift
+
+  @tf.function
+  def call(self, inputs):
+    random_factor = tf.random.uniform(()) * self.max_shift + 1
+    return tf.map_fn(lambda x: tfa.image.gaussian_filter2d(x, (random_factor, random_factor)), inputs)
   
   def get_config(self):
     config = super().get_config().copy()
@@ -96,15 +105,16 @@ class RandomRotationVideo(tf.keras.layers.Layer):
 def create_model(hp):
   with strategy.scope():
     
-    CONV_NEURONS = hp.Int('conv_neurons', 8, 40)
+    CONV_NEURONS = hp.Int('conv_neurons', 4, 32)
     DROPOUT = hp.Float('dropout', 0.0, 0.5)
     LR = hp.Float('lr', 0.0001, 0.006)
     ROTATION_MAX = hp.Float('rotation_max', 0.0, 0.5)
-    DENSE_UNITS = hp.Int('dense_units', 0, 128)
-    N_CONV_LAYERS = hp.Int('n_conv_layers', 2, 5)
-    N_DENSE_LAYERS = hp.Int('n_dense_layers', 0, 4)
-    BATCH_NORM = hp.Int('batch_norm', 0, 1)
-    KERNEL_INITIALIZER = hp.Choice('kernel_initializer', ['glorot_uniform', 'glorot_normal', 'he_uniform', 'he_normal'])
+    DENSE_UNITS = hp.Int('dense_units', 4, 128)
+    N_CONV_LAYERS = hp.Int('n_conv_layers', 2, 4)
+    N_DENSE_LAYERS = 1
+    STRIDES = 1
+    BATCH_NORM = hp.Boolean('batch_norm', True)
+    DENSE_BATCH_NORM_MODE = hp.Int('dense_batch_norm_mode', 0, 2)
 
     optimizers = {
       'adam': tf.keras.optimizers.Adam(LR),
@@ -118,38 +128,43 @@ def create_model(hp):
 
     model.add(layers.InputLayer(input_shape=(N_FRAMES, IMG_SIZE, IMG_SIZE, CHANNELS)))
 
+    # Add image augmentation layers 
     model.add(RandomFlipVideo())
     model.add(RandomRotationVideo(ROTATION_MAX))
-
-    for i in range(N_CONV_LAYERS):
-      model.add(layers.TimeDistributed(layers.Conv2D(CONV_NEURONS, (3, 3), kernel_initializer=KERNEL_INITIALIZER, activation='relu')))
-
-      if BATCH_NORM:
+    # model.add(RandomBlurVideo(10))
+    
+    model.add(layers.Conv3D(CONV_NEURONS, (3, 3, 3), strides=STRIDES, activation='relu', kernel_initializer='he_normal', padding='same'))
+    model.add(layers.Conv3D(CONV_NEURONS, (3, 3, 3), strides=STRIDES, activation='relu', kernel_initializer='he_normal', padding='same'))
+    model.add(layers.MaxPooling3D())
+    if BATCH_NORM:
         model.add(layers.BatchNormalization())
 
-      model.add(layers.TimeDistributed(layers.Conv2D(CONV_NEURONS, (3, 3), kernel_initializer=KERNEL_INITIALIZER, activation='relu')))
-      
+    for i in range(N_CONV_LAYERS - 1):
+      model.add(layers.Conv3D(CONV_NEURONS, (3, 3, 3), activation='relu', kernel_initializer='he_normal', padding='same'))
+      model.add(layers.Conv3D(CONV_NEURONS, (3, 3, 3), activation='relu', kernel_initializer='he_normal', padding='same'))
+      model.add(layers.MaxPooling3D())
       if BATCH_NORM:
         model.add(layers.BatchNormalization())
-        
-      model.add(layers.TimeDistributed(layers.MaxPooling2D()))
 
     model.add(layers.Flatten())
-    
+
     for i in range(N_DENSE_LAYERS):
       model.add(layers.Dense(DENSE_UNITS, activation='relu'))
-      if BATCH_NORM:
-        model.add(layers.BatchNormalization())
-      
       model.add(layers.Dropout(DROPOUT))
+      if DENSE_BATCH_NORM_MODE == 0:
+        model.add(layers.BatchNormalization())
+      elif DENSE_BATCH_NORM_MODE == 1:
+        model.add(layers.Dropout(DROPOUT))
+      else:
+        model.add(layers.Dropout(DROPOUT))
+        model.add(layers.BatchNormalization())
+
 
     model.add(layers.Dense(1, activation='sigmoid'))
 
-
-
     model.compile(
         loss='binary_crossentropy',
-        optimizer=optimizers[optimizer_str],
+        optimizer= optimizers[optimizer_str],
         metrics=['accuracy'],
     )
 
@@ -163,14 +178,14 @@ reduce_lr_on_plataeu = tf.keras.callbacks.ReduceLROnPlateau(monitor='val_accurac
 tuner = BayesianOptimization(
   create_model,
   objective='val_accuracy',
-  max_trials=100,
+  max_trials=300,
   overwrite=True,
 )
 
 tuner.search(
   train_dataset, 
   validation_data=val_dataset, 
-  epochs=20,
+  epochs=25,
   callbacks=[early_stopper, reduce_lr_on_plataeu], 
   use_multiprocessing=True, 
   workers=32,

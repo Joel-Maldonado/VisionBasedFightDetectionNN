@@ -5,11 +5,11 @@ import os
 from tqdm import tqdm
 from multiprocessing import Pool
 
-N_FRAMES = 30
+N_FRAMES = 20
 IMG_SIZE = 224
 CHANNELS = 5
 
-DIR = '/u/jruiz_intern/jruiz/Datasets/RWF/val'
+DIR = '/u/jruiz_intern/jruiz/Datasets/RWF/train'
 
 V_DIR = os.path.join(DIR, 'Fight')
 NV_DIR = os.path.join(DIR, 'NonFight')
@@ -66,12 +66,12 @@ def get_rgb_opt_video(file_path, resize=(IMG_SIZE, IMG_SIZE)):
     result[...,:3] = frames
     result[...,3:] = flows
     
-    return frames[::len(frames)//N_FRAMES]
+    return [result[int(i)] for i in np.linspace(0, len(result)-1, N_FRAMES)]
 
 
 def get_dir_vids(directory):
     paths = [os.path.join(directory, file) for file in os.listdir(directory)]
-    pool = Pool(processes=8)
+    pool = Pool()
     
     vids = []
     for vid in tqdm(pool.imap_unordered(get_rgb_opt_video, paths), total=len(paths)):
@@ -81,27 +81,25 @@ def get_dir_vids(directory):
 
 print("Getting violent videos...")
 v_videos = get_dir_vids(V_DIR)
+v_labels = [1] * len(v_videos)
+
+
+v_data = list(zip(v_videos, v_labels))
 
 
 print("Getting nonviolent videos...")
 nv_videos = get_dir_vids(NV_DIR)
+nv_labels = [0] * len(nv_videos)
 
-print("LEN STUFF")
-
-v_labels = tf.ones((len(v_videos),), dtype=tf.uint8)
-
-nv_labels = tf.zeros((len(nv_videos),), dtype=tf.uint8)
-
-print("CONcAT")
-
-videos = tf.concat([v_videos, nv_videos], axis=0)
-
-print("ADD")
-# labels = v_labels + nv_labels
-labels = tf.concat([v_labels, nv_labels], axis=0)
+nv_data = list(zip(nv_videos, nv_labels))
 
 
-print("Writing videos to TFRecord...")
+data = v_data + nv_data
+print(len(data))
+np.random.shuffle(data)
+
+
+print("Creating TFRecord...")
 
 def wrap_bytes(value):
     return tf.train.Feature(bytes_list=tf.train.BytesList(value=[value]))
@@ -109,14 +107,37 @@ def wrap_bytes(value):
 def wrap_int64(value):
     return tf.train.Feature(int64_list=tf.train.Int64List(value=[value]))
 
-with tf.io.TFRecordWriter('violence_rgb_opt_val.tfrecord') as tfrecord:
+with tf.io.TFRecordWriter('violence_rgb_opt_train.tfrecord') as tfrecord:
 
-    for i, (video, label) in tqdm(enumerate(zip(videos, labels))):
+    for video, label in tqdm(data):
 
         vid = tf.cast(video, tf.float32)
-
+        
         example = tf.train.Example(features=tf.train.Features(feature={
             'video': wrap_bytes(vid.numpy().tobytes()),
             'label': wrap_int64(label)
         }))
         tfrecord.write(example.SerializeToString())
+
+    # print("Writing NONVIOLENT videos to TFRecord...")
+    # print("Writing VIOLENT videos to TFRecord...")
+    # for i, (video, label) in tqdm(enumerate(zip(v_videos, v_labels)), total=len(v_videos)):
+
+    #     vid = tf.cast(video, tf.float32)
+
+    #     example = tf.train.Example(features=tf.train.Features(feature={
+    #         'video': wrap_bytes(vid.numpy().tobytes()),
+    #         'label': wrap_int64(label)
+    #     }))
+    #     tfrecord.write(example.SerializeToString())
+
+    # print("Writing NONVIOLENT videos to TFRecord...")
+    # for i, (video, label) in tqdm(enumerate(zip(nv_videos, nv_labels)), total=len(nv_videos)):
+
+    #     vid = tf.cast(video, tf.float32)
+
+    #     example = tf.train.Example(features=tf.train.Features(feature={
+    #         'video': wrap_bytes(vid.numpy().tobytes()),
+    #         'label': wrap_int64(label)
+    #     }))
+    #     tfrecord.write(example.SerializeToString())
