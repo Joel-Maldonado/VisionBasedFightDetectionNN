@@ -147,7 +147,7 @@ model = create_model()
 history = model.fit(train_dataset, 
                     validation_data=val_dataset, 
                     epochs=200, 
-                    callbacks=[check_point, early_stopper, reduce_lr_on_plataeu], 
+                    callbacks=[check_point, early_stopper, reduce_lr_on_plataeu, tf.keras.callbacks.TensorBoard("tb_logs")], 
                     use_multiprocessing=True, 
                     workers=16,
                     batch_size=BATCH_SIZE)
@@ -155,3 +155,5 @@ history = model.fit(train_dataset,
 metrics = model.evaluate(test_dataset)
 
 model.save(f'Models/Bounding_Box_GIoU_{metrics[0]}.h5')
+
+tf.keras.utils.plot_model(model, to_file='bounding_box_model.png', show_shapes=True)

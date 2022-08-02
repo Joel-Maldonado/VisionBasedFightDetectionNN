@@ -1,11 +1,16 @@
 import os
 import sys
 import numpy as np
+import pandas as pd
 import tensorflow as tf
 import cv2
 import tensorflow_addons as tfa
 from tqdm import tqdm
 from multiprocessing import Pool
+from sklearn.metrics import confusion_matrix
+from pretty_confusion_matrix import pp_matrix, pp_matrix_from_data
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 TRAIN_RECORD_DIR = 'violence_rgb_opt_train.tfrecord'
 VAL_RECORD_DIR = 'violence_rgb_opt_val.tfrecord'
@@ -37,125 +42,146 @@ def preprocess(video, label):
     video = video / 255.0
     return video, label
 
-def random_flip(video, label):
-  if tf.random.uniform(()) > 0.5:
-    return tf.map_fn(lambda x: tf.image.flip_left_right(x), video), label
-  return video, label
+# def random_flip(video, label):
+#   if tf.random.uniform(()) > 0.5:
+#     return tf.map_fn(lambda x: tf.image.flip_left_right(x), video), label
+#   return video, label
 
-def random_rotation(video, label):
-  random_factor = tf.random.uniform(()) * 0.3 * 2 - 0.3
-  return tf.map_fn(lambda x: tfa.image.rotate(x, random_factor), video), label
+# def random_rotation(video, label):
+#   random_factor = tf.random.uniform(()) * 0.3 * 2 - 0.3
+#   return tf.map_fn(lambda x: tfa.image.rotate(x, random_factor), video), label
 
-def random_reduce_quality(video, label):
-  factor = tf.random.uniform(()) * 2.5
-  return tf.map_fn(
-    lambda x: tf.image.resize(tf.image.resize(x, (int(IMG_SIZE / factor), int(IMG_SIZE / factor))), (IMG_SIZE, IMG_SIZE)), video), label
+# def random_reduce_quality(video, label):
+#   factor = tf.random.uniform(()) * 2.5
+#   return tf.map_fn(
+#     lambda x: tf.image.resize(tf.image.resize(x, (int(IMG_SIZE / factor), int(IMG_SIZE / factor))), (IMG_SIZE, IMG_SIZE)), video), label
 
 
-def getOpticalFlow(video):
-    gray_videos = []
-    for img in video:
-        gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
-        gray_videos.append(np.reshape(gray,(224,224,1)))
+# def getOpticalFlow(video):
+#     gray_videos = []
+#     for img in video:
+#         gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+#         gray_videos.append(np.reshape(gray,(224,224,1)))
         
-    flows = []
-    for i in range(0,len(video)-1):
-        flow = cv2.calcOpticalFlowFarneback(gray_videos[i], gray_videos[i+1], None, 0.5, 3, 15, 3, 5, 1.2, cv2.OPTFLOW_FARNEBACK_GAUSSIAN)
+#     flows = []
+#     for i in range(0,len(video)-1):
+#         flow = cv2.calcOpticalFlowFarneback(gray_videos[i], gray_videos[i+1], None, 0.5, 3, 15, 3, 5, 1.2, cv2.OPTFLOW_FARNEBACK_GAUSSIAN)
         
-        # subtract the mean in order to eliminate the movement of camera
-        flow[..., 0] -= np.mean(flow[..., 0])
-        flow[..., 1] -= np.mean(flow[..., 1])
+#         # subtract the mean in order to eliminate the movement of camera
+#         flow[..., 0] -= np.mean(flow[..., 0])
+#         flow[..., 1] -= np.mean(flow[..., 1])
 
-        # normalize each component in optical flow
-        flow[..., 0] = cv2.normalize(flow[..., 0],None,0,255,cv2.NORM_MINMAX)
-        flow[..., 1] = cv2.normalize(flow[..., 1],None,0,255,cv2.NORM_MINMAX)
+#         # normalize each component in optical flow
+#         flow[..., 0] = cv2.normalize(flow[..., 0],None,0,255,cv2.NORM_MINMAX)
+#         flow[..., 1] = cv2.normalize(flow[..., 1],None,0,255,cv2.NORM_MINMAX)
 
-        flows.append(flow)
+#         flows.append(flow)
 
-    # Padding the last frame as empty array
-    flows.append(np.zeros((224,224,2)))
+#     # Padding the last frame as empty array
+#     flows.append(np.zeros((224,224,2)))
 
-    return np.array(flows, dtype=np.float32)
+#     return np.array(flows, dtype=np.float32)
 
 
-def get_rgb_opt_video(file_path, resize=(IMG_SIZE, IMG_SIZE)):
-    cap = cv2.VideoCapture(file_path)
-    # Get number of frames
-    len_frames = int(cap.get(7))
-    # Extract frames from video
-    try:
-        frames = []
-        for i in range(len_frames):
-            _, frame = cap.read()
-            frame = cv2.resize(frame,resize, interpolation=cv2.INTER_AREA)
-            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            frame = np.reshape(frame, (224,224,3))
-            frames.append(frame)   
-    except:
-        print("Error: ", file_path, len_frames,i)
-    finally:
-        frames = np.array(frames)
-        cap.release()
+# def get_rgb_opt_video(file_path, resize=(IMG_SIZE, IMG_SIZE)):
+#     cap = cv2.VideoCapture(file_path)
+#     # Get number of frames
+#     len_frames = int(cap.get(7))
+#     # Extract frames from video
+#     try:
+#         frames = []
+#         for i in range(len_frames):
+#             _, frame = cap.read()
+#             frame = cv2.resize(frame,resize, interpolation=cv2.INTER_AREA)
+#             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+#             frame = np.reshape(frame, (224,224,3))
+#             frames.append(frame)   
+#     except:
+#         print("Error: ", file_path, len_frames,i)
+#     finally:
+#         frames = np.array(frames)
+#         cap.release()
             
-    # Get the optical flow of video
-    flows = getOpticalFlow(frames)
+#     # Get the optical flow of video
+#     flows = getOpticalFlow(frames)
     
-    result = np.zeros((len(flows),224,224,5))
-    result[...,:3] = frames
-    result[...,3:] = flows
+#     result = np.zeros((len(flows),224,224,5))
+#     result[...,:3] = frames
+#     result[...,3:] = flows
     
-    return [result[int(i)] for i in np.linspace(0, len(result)-1, N_FRAMES)]
+#     return [result[int(i)] for i in np.linspace(0, len(result)-1, N_FRAMES)]
 
 
-def get_dir_vids(directory):
-    paths = [os.path.join(directory, file) for file in os.listdir(directory)][:2]
-    pool = Pool()
+# def get_dir_vids(directory):
+#     paths = [os.path.join(directory, file) for file in os.listdir(directory)][:2]
+#     pool = Pool()
     
-    vids = []
-    for vid in tqdm(pool.imap_unordered(get_rgb_opt_video, paths), total=len(paths)):
-        vids.append(vid)
+#     vids = []
+#     for vid in tqdm(pool.imap_unordered(get_rgb_opt_video, paths), total=len(paths)):
+#         vids.append(vid)
     
-    return vids
+#     return vids
 
-print("Getting violent videos...")
-v_videos = get_dir_vids('/u/jruiz_intern/jruiz/Datasets/fight-detection-surv-dataset-master/fight')
-v_labels = [1] * len(v_videos)
-
-
-v_data = list(zip(v_videos, v_labels))
+# print("Getting violent videos...")
+# v_videos = get_dir_vids('/u/jruiz_intern/jruiz/Datasets/fight-detection-surv-dataset-master/fight')
+# v_labels = [1] * len(v_videos)
 
 
-print("Getting nonviolent videos...")
-nv_videos = get_dir_vids('/u/jruiz_intern/jruiz/Datasets/fight-detection-surv-dataset-master/noFight')
-nv_labels = [0] * len(nv_videos)
-
-nv_data = list(zip(nv_videos, nv_labels))
+# v_data = list(zip(v_videos, v_labels))
 
 
-data = v_data + nv_data
-print(len(data))
-np.random.shuffle(data)
+# print("Getting nonviolent videos...")
+# nv_videos = get_dir_vids('/u/jruiz_intern/jruiz/Datasets/fight-detection-surv-dataset-master/noFight')
+# nv_labels = [0] * len(nv_videos)
+
+# nv_data = list(zip(nv_videos, nv_labels))
+
+
+# data = v_data + nv_data
+# print(len(data))
+# np.random.shuffle(data)
 
 # def random_blur(video, label):
 #   random_factor = tf.random.uniform(()) * 10 + 1
 #   return tf.map_fn(lambda x: tfa.image.gaussian_filter2d(x, (random_factor, random_factor)), video), label
 
 
-# val_dataset = tf.data.TFRecordDataset(VAL_RECORD_DIR)
-# val_dataset = val_dataset.map(parse_tfrecord)
-# val_dataset = val_dataset.map(preprocess)
+val_dataset = tf.data.TFRecordDataset(VAL_RECORD_DIR)
+val_dataset = val_dataset.map(parse_tfrecord)
+val_dataset = val_dataset.map(preprocess)
 # val_dataset = val_dataset.map(random_flip)
 # val_dataset = val_dataset.map(random_rotation)
 # val_dataset = val_dataset.map(random_reduce_quality)
 
-# violence_model = tf.keras.models.load_model(VIOLENCE_MODEL_PATH)
+violence_model = tf.keras.models.load_model(VIOLENCE_MODEL_PATH)
 # box_model = tf.keras.models.load_model(BOX_MODEL_PATH, compile=False)
 
-# for video, label in val_dataset.skip(10).take(10):
+labels = []
+preds = []
+for video, label in val_dataset.skip(10).take(5):
+  # labels.append(label)
+  # preds.append(violence_model.predict(tf.expand_dims(video, 0)))
+  labels.append(label.numpy())
+  preds.append(round(violence_model.predict(tf.expand_dims(video, 0))[0, 0]))
+
+print(labels, preds)
+print(confusion_matrix(labels, preds))
+
+pp_matrix_from_data(labels, preds, cmap='Blues')
+# pp_matrix(df, cmap='Blues')
+
+hm = sns.heatmap(confusion_matrix(labels, preds), xticklabels=['NonViolent (TN)', 'Violent (TP)'], yticklabels=['NonViolent (FN)', 'Violent (FP)'], annot=True, fmt='d', cmap='Blues')
+plt.xlabel('Actual', fontsize=20)
+plt.ylabel('Predicted', fontsize=20)
+# # Put the x axis on top of the heat map
+hm.xaxis.tick_top()
+plt.show()
+
+# for n_video, (video, label) in enumerate(val_dataset.skip(10).take(10)):
 #   violent = violence_model.predict(tf.expand_dims(video, 0))
 #   violent = round(violent[0][0])
 
-#   for img in video:
+#   for n_img, img in enumerate(video):
 #     formatted = tf.cast(img * 255, np.uint8).numpy()
 
 #     gray = tf.image.rgb_to_grayscale(img[..., :3])
@@ -187,6 +213,9 @@ np.random.shuffle(data)
 #     key = cv2.waitKey(5000//N_FRAMES)
 #     if key == ord('q'):
 #       sys.exit()
+    
+#     cv2.imwrite(f'Dump/{n_video}_frame{n_img}_rgb.png', bgr)
+#     cv2.imwrite(f'Dump/{n_video}_frame{n_img}_opt.png', opt)
 
 
 # model = tf.keras.models.load_model(MODEL_PATH)
@@ -208,78 +237,78 @@ np.random.shuffle(data)
 # print(f"Final Accuracy: {correct/total} | {correct}/{total}")
 
 
-class RandomFlipVideo(tf.keras.layers.Layer):
-  def __init__(self, **kwargs):
-    super(RandomFlipVideo, self).__init__()
+# class RandomFlipVideo(tf.keras.layers.Layer):
+#   def __init__(self, **kwargs):
+#     super(RandomFlipVideo, self).__init__()
 
-  @tf.function
-  def call(self, inputs):
-    if tf.random.uniform(()) > 0.5:
-      return tf.map_fn(lambda x: tf.image.flip_left_right(x), inputs)
-    return inputs
+#   @tf.function
+#   def call(self, inputs):
+#     if tf.random.uniform(()) > 0.5:
+#       return tf.map_fn(lambda x: tf.image.flip_left_right(x), inputs)
+#     return inputs
   
-class RandomRotationVideo(tf.keras.layers.Layer):
-  def __init__(self, max_rotation=0.3, **kwargs):
-    super(RandomRotationVideo, self).__init__()
-    self.max_rotation = max_rotation
+# class RandomRotationVideo(tf.keras.layers.Layer):
+#   def __init__(self, max_rotation=0.3, **kwargs):
+#     super(RandomRotationVideo, self).__init__()
+#     self.max_rotation = max_rotation
 
-  @tf.function
-  def call(self, inputs):
-    random_factor = tf.random.uniform(()) * self.max_rotation * 2 - self.max_rotation
-    return tf.map_fn(lambda x: tfa.image.rotate(x, random_factor), inputs)
+#   @tf.function
+#   def call(self, inputs):
+#     random_factor = tf.random.uniform(()) * self.max_rotation * 2 - self.max_rotation
+#     return tf.map_fn(lambda x: tfa.image.rotate(x, random_factor), inputs)
     
-  def get_config(self):
-    config = super().get_config().copy()
-    return config
+#   def get_config(self):
+#     config = super().get_config().copy()
+#     return config
 
 
 
-# def get_prediction(model, data):
-#   video, label = data
-#   return round(model.predict(tf.expand_dims(video, 0), verbose=0)[0][0]) == label
+# # def get_prediction(model, data):
+# #   video, label = data
+# #   return round(model.predict(tf.expand_dims(video, 0), verbose=0)[0][0]) == label
 
-# results = { }
+# # results = { }
 
-for model_name in os.listdir('Models'):
-  if not 'Violence_Acc_' in model_name:
-    continue
-  print(f"Loading model {model_name}")
+# for model_name in os.listdir('Models'):
+#   if not 'Violence_Acc_' in model_name:
+#     continue
+#   print(f"Loading model {model_name}")
   
-#   print(f"Loading model: {model_name}")
+# #   print(f"Loading model: {model_name}")
 
-  path = os.path.join('Models', model_name)
-  try:
-    model = tf.keras.models.load_model(path)
-  except Exception:
-    model = tf.keras.models.load_model(path, compile=True, custom_objects={'RandomFlipVideo': RandomFlipVideo, 'RandomRotationVideo': RandomRotationVideo})
+#   path = os.path.join('Models', model_name)
+#   try:
+#     model = tf.keras.models.load_model(path)
+#   except Exception:
+#     model = tf.keras.models.load_model(path, compile=True, custom_objects={'RandomFlipVideo': RandomFlipVideo, 'RandomRotationVideo': RandomRotationVideo})
 
-  print(model.evaluate(data))
-#   correct = 0
-#   total = 0
+#   print(model.evaluate(data))
+# #   correct = 0
+# #   total = 0
 
-#   print("-----------------------------------------------------")
+# #   print("-----------------------------------------------------")
 
-#   # for video, label in data:
-#   #   if round(model.predict(tf.expand_dims(video, 0), verbose=0)[0][0]) == label:
-#   #     correct += 1
-#   #   total += 1
+# #   # for video, label in data:
+# #   #   if round(model.predict(tf.expand_dims(video, 0), verbose=0)[0][0]) == label:
+# #   #     correct += 1
+# #   #   total += 1
     
 
   
-#   pool = Pool()
-#   for result in pool.imap_unordered(get_prediction, data):
-#     if result:
-#       correct += 1
-#     total += 1
-#     print(f"Accuracy: {correct/total} | {correct}/{total}")
-#     print("-----------------------------------------------------")
+# #   pool = Pool()
+# #   for result in pool.imap_unordered(get_prediction, data):
+# #     if result:
+# #       correct += 1
+# #     total += 1
+# #     print(f"Accuracy: {correct/total} | {correct}/{total}")
+# #     print("-----------------------------------------------------")
 
-#   print(f"Final Accuracy: {correct/total} | {correct}/{total}")
+# #   print(f"Final Accuracy: {correct/total} | {correct}/{total}")
 
-#   results[model_name] = correct/total
+# #   results[model_name] = correct/total
 
-#   print(results)
+# #   print(results)
 
 
-# print(f"Best Model: {max(results, key=results.get)}")
-# print(f"Best Model Accuracy: {max(results.values())}")
+# # print(f"Best Model: {max(results, key=results.get)}")
+# # print(f"Best Model Accuracy: {max(results.values())}")
