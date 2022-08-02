@@ -25,6 +25,9 @@ N_FRAMES = 20
 BATCH_SIZE = 16
 CHANNELS = 5
 AUTOTUNE = tf.data.experimental.AUTOTUNE
+ROTATION_MAX = 0.0
+REDUCE_QUALITY = False
+
 
 TRAIN_RECORD_DIR = 'violence_rgb_opt_train.tfrecord'
 VAL_RECORD_DIR = 'violence_rgb_opt_val.tfrecord'
@@ -45,10 +48,28 @@ def preprocess(video, label):
     video = video / 255.0
     return video, label
 
+def random_flip(video, label):
+  if tf.random.uniform(()) > 0.5:
+    return tf.map_fn(lambda x: tf.image.flip_left_right(x), video), label
+  return video, label
+
+def random_rotation(video, label):
+  random_factor = tf.random.uniform(()) * ROTATION_MAX * 2 - ROTATION_MAX
+  return tf.map_fn(lambda x: tfa.image.rotate(x, random_factor), video), label
+  
+def random_reduce_quality(video, label):
+  if REDUCE_QUALITY == False:
+    return video, label
+  factor = tf.random.uniform(()) * 1.5
+  return tf.map_fn(
+    lambda x: tf.image.resize(tf.image.resize(x, (int(IMG_SIZE / factor), int(IMG_SIZE / factor))), (IMG_SIZE, IMG_SIZE)), video), label
+
 train_dataset = tf.data.TFRecordDataset(TRAIN_RECORD_DIR)
 train_dataset = train_dataset.map(parse_tfrecord)
 train_dataset = train_dataset.map(preprocess)
-
+train_dataset = train_dataset.map(random_flip)
+train_dataset = train_dataset.map(random_rotation)
+train_dataset = train_dataset.map(random_reduce_quality)
 
 val_dataset = tf.data.TFRecordDataset(VAL_RECORD_DIR)
 val_dataset = val_dataset.map(parse_tfrecord)
@@ -104,8 +125,9 @@ class RandomBlurVideo(tf.keras.layers.Layer):
 # Model Creation
 def create_model(hp):
   with strategy.scope():
-    
-    CONV_NEURONS = hp.Int('conv_neurons', 4, 32)
+    global ROTATION_MAX, REDUCE_QUALITY
+
+    CONV_NEURONS = hp.Int('conv_neurons', 4, 64)
     DROPOUT = hp.Float('dropout', 0.0, 0.5)
     LR = hp.Float('lr', 0.0001, 0.006)
     ROTATION_MAX = hp.Float('rotation_max', 0.0, 0.5)
@@ -113,8 +135,9 @@ def create_model(hp):
     N_CONV_LAYERS = hp.Int('n_conv_layers', 2, 4)
     N_DENSE_LAYERS = 1
     STRIDES = 1
-    BATCH_NORM = hp.Boolean('batch_norm', True)
+    BATCH_NORM = hp.Boolean('batch_norm?')
     DENSE_BATCH_NORM_MODE = hp.Int('dense_batch_norm_mode', 0, 2)
+    REDUCE_QUALITY = hp.Boolean('reduce_quality?')
 
     optimizers = {
       'adam': tf.keras.optimizers.Adam(LR),
@@ -129,8 +152,8 @@ def create_model(hp):
     model.add(layers.InputLayer(input_shape=(N_FRAMES, IMG_SIZE, IMG_SIZE, CHANNELS)))
 
     # Add image augmentation layers 
-    model.add(RandomFlipVideo())
-    model.add(RandomRotationVideo(ROTATION_MAX))
+    # model.add(RandomFlipVideo())
+    # model.add(RandomRotationVideo(ROTATION_MAX))
     # model.add(RandomBlurVideo(10))
     
     model.add(layers.Conv3D(CONV_NEURONS, (3, 3, 3), strides=STRIDES, activation='relu', kernel_initializer='he_normal', padding='same'))
@@ -178,24 +201,24 @@ reduce_lr_on_plataeu = tf.keras.callbacks.ReduceLROnPlateau(monitor='val_accurac
 tuner = BayesianOptimization(
   create_model,
   objective='val_accuracy',
-  max_trials=300,
+  max_trials=25,
   overwrite=True,
 )
 
 tuner.search(
   train_dataset, 
   validation_data=val_dataset, 
-  epochs=25,
+  epochs=20,
   callbacks=[early_stopper, reduce_lr_on_plataeu], 
   use_multiprocessing=True, 
   workers=32,
   batch_size=BATCH_SIZE,
 )
 
-print(tuner.results_summary(100))
+print(tuner.results_summary(400))
 
 import time
 
 sys.stdout = open(f'tuner_results_{time.time()}.txt', 'w')
-print(tuner.results_summary(100))
+print(tuner.results_summary(400))
 sys.stdout.close()

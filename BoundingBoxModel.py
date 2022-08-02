@@ -22,7 +22,7 @@ MAX_VIDEOS_PER_CLASS = 10
 BATCH_SIZE = 32
 CHANNELS = 1
 AUTOTUNE = tf.data.experimental.AUTOTUNE
-DATA_DIR = 'Data/BoundingBoxes'
+DATA_DIR = 'Data/BoundingImages'
 LABEL_DIR = 'Data/violence_bounding_box_labels.csv'
 
 df = pd.read_csv(LABEL_DIR)
@@ -111,12 +111,10 @@ def create_model():
 
     model.add(layers.Conv2D(NEURONS, (3, 3), activation='relu'))
     model.add(layers.MaxPooling2D(pool_size=(2, 2)))
-    model.add(layers.Dropout(DROPOUT))
     
     for _ in range(N_LAYERS):
         model.add(layers.Conv2D(NEURONS, (3, 3), activation='relu'))
         model.add(layers.MaxPooling2D(pool_size=(2, 2)))
-        model.add(layers.Dropout(DROPOUT))
 
     model.add(layers.Flatten())
 

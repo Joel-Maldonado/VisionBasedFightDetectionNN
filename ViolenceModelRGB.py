@@ -2,8 +2,8 @@
 # silence_tensorflow()
 
 import tensorflow as tf
-import os
 from tensorflow.keras import layers
+import tensorflow_addons as tfa
 
 # GPUs
 # gpus = tf.config.experimental.list_physical_devices('GPU')
@@ -23,6 +23,7 @@ N_FRAMES = 20
 BATCH_SIZE = 16
 CHANNELS = 5
 AUTOTUNE = tf.data.experimental.AUTOTUNE
+ROTATION_MAX = 0.05
 
 TRAIN_RECORD_DIR = 'violence_rgb_opt_train.tfrecord'
 VAL_RECORD_DIR = 'violence_rgb_opt_val.tfrecord'
@@ -44,16 +45,28 @@ def preprocess(video, label):
     video = video / 255.0
     return video, label
 
+def random_flip(video, label):
+  if tf.random.uniform(()) > 0.5:
+    return tf.map_fn(lambda x: tf.image.flip_left_right(x), video), label
+  return video, label
+
+def random_rotation(video, label):
+  random_factor = tf.random.uniform(()) * ROTATION_MAX * 2 - ROTATION_MAX
+  return tf.map_fn(lambda x: tfa.image.rotate(x, random_factor), video), label
+
+
 train_dataset = tf.data.TFRecordDataset(TRAIN_RECORD_DIR)
 train_dataset = train_dataset.map(parse_tfrecord)
 train_dataset = train_dataset.map(preprocess)
+train_dataset = train_dataset.map(random_flip)
+train_dataset = train_dataset.map(random_rotation)
 
 
 val_dataset = tf.data.TFRecordDataset(VAL_RECORD_DIR)
 val_dataset = val_dataset.map(parse_tfrecord)
 val_dataset = val_dataset.map(preprocess)
 
-train_dataset = train_dataset.shuffle(buffer_size=1600, reshuffle_each_iteration=True, seed=SEED)
+train_dataset = train_dataset.shuffle(buffer_size=1600, reshuffle_each_iteration=True)
 
 
 train_dataset = train_dataset.batch(BATCH_SIZE)
@@ -86,55 +99,56 @@ class RandomRotationVideo(tf.keras.layers.Layer):
     config = super().get_config().copy()
     return config
 
-class RandomBlurVideo(tf.keras.layers.Layer):
-  def __init__(self, max_shift=10, **kwargs):
-    super(RandomBlurVideo, self).__init__()
-    self.max_shift = max_shift
+# class RandomBlurVideo(tf.keras.layers.Layer):
+#   def __init__(self, max_shift=10, **kwargs):
+#     super(RandomBlurVideo, self).__init__()
+#     self.max_shift = max_shift
 
-  @tf.function
-  def call(self, inputs):
-    random_factor = tf.random.uniform(()) * self.max_shift + 1
-    return tf.map_fn(lambda x: tfa.image.gaussian_filter2d(x, (random_factor, random_factor)), inputs)
+#   @tf.function
+#   def call(self, inputs):
+#     random_factor = tf.random.uniform(()) * self.max_shift + 1
+#     return tf.map_fn(lambda x: tfa.image.gaussian_filter2d(x, (random_factor, random_factor)), inputs)
   
-  def get_config(self):
-    config = super().get_config().copy()
-    return config
+#   def get_config(self):
+#     config = super().get_config().copy()
+#     return config
+
 
 # Model Creation
 def create_model():
+    global ROTATION_MAX
 
-    CONV_NEURONS = 8
-    DROPOUT = 0.3
-    LR = 0.0001
-    ROTATION_MAX = 0.17
-    DENSE_UNITS = 128
+    CONV_NEURONS = 16
+    DROPOUT = 0.2
+    LR = 0.0007
+    DENSE_UNITS = 64
     N_CONV_LAYERS = 3
     N_DENSE_LAYERS = 1
     STRIDES = 1
+    ROTATION_MAX = 0.212
 
     model = tf.keras.models.Sequential()
 
-
     model.add(layers.InputLayer(input_shape=(N_FRAMES, IMG_SIZE, IMG_SIZE, CHANNELS)))
 
-    # Add image augmentation layers 
-    model.add(RandomFlipVideo())
-    # model.add(RandomRotationVideo(ROTATION_MAX))
-    # model.add(RandomBlurVideo(10))
-    
     model.add(layers.Conv3D(CONV_NEURONS, (3, 3, 3), strides=STRIDES, activation='relu', kernel_initializer='he_normal', padding='same'))
     model.add(layers.Conv3D(CONV_NEURONS, (3, 3, 3), strides=STRIDES, activation='relu', kernel_initializer='he_normal', padding='same'))
+    # model.add(layers.TimeDistributed(layers.Conv2D(CONV_NEURONS, (3, 3), strides=STRIDES, activation='relu', kernel_initializer='he_normal', padding='same')))
+    # model.add(layers.TimeDistributed(layers.Conv2D(CONV_NEURONS, (3, 3), strides=STRIDES, activation='relu', kernel_initializer='he_normal', padding='same')))
     model.add(layers.MaxPooling3D())
 
     for i in range(N_CONV_LAYERS - 1):
       model.add(layers.Conv3D(CONV_NEURONS, (3, 3, 3), activation='relu', kernel_initializer='he_normal', padding='same'))
       model.add(layers.Conv3D(CONV_NEURONS, (3, 3, 3), activation='relu', kernel_initializer='he_normal', padding='same'))
+      # model.add(layers.TimeDistributed(layers.Conv2D(CONV_NEURONS, (3, 3), strides=STRIDES, activation='relu', kernel_initializer='he_normal', padding='same')))
+      # model.add(layers.TimeDistributed(layers.Conv2D(CONV_NEURONS, (3, 3), strides=STRIDES, activation='relu', kernel_initializer='he_normal', padding='same')))
+
       model.add(layers.MaxPooling3D())
 
     model.add(layers.Flatten())
 
     for i in range(N_DENSE_LAYERS):
-      model.add(layers.Dense(DENSE_UNITS, activation='relu', kernel_regularizer=tf.keras.regularizers.l2(0.0001)))
+      model.add(layers.Dense(DENSE_UNITS, activation='relu'))
       model.add(layers.Dropout(DROPOUT))
 
 
@@ -142,7 +156,7 @@ def create_model():
 
     model.compile(
         loss='binary_crossentropy',
-        optimizer= tf.keras.optimizers.Nadam(0.001),
+        optimizer= tf.keras.optimizers.Adam(LR),
         metrics=['accuracy'],
     )
 
@@ -157,32 +171,32 @@ reduce_lr_on_plataeu = tf.keras.callbacks.ReduceLROnPlateau(monitor='val_accurac
 from datetime import datetime
 time_date = datetime.now().strftime("%I-%M-%p")
 
-check_point = tf.keras.callbacks.ModelCheckpoint(f'Checkpoints/violence_model_{time_date}.h5', save_best_only=True)
-
+acc_cp = tf.keras.callbacks.ModelCheckpoint(f'Checkpoints/violence_model_acc_{time_date}.h5', save_best_only=True, monitor='val_accuracy')
+loss_cp = tf.keras.callbacks.ModelCheckpoint(f'Checkpoints/violence_model_loss_{time_date}.h5', save_best_only=True, monitor='val_loss')
 
 with strategy.scope():
     model = create_model()
 
 
-# tf.keras.utils.plot_model(model, show_shapes=True, expand_nested=True, dpi=150, to_file='model.png')
-
-history = model.fit(train_dataset, 
-                    validation_data=val_dataset, 
-                    epochs=30, 
-                    callbacks=[check_point, early_stopper, reduce_lr_on_plataeu, tf.keras.callbacks.TensorBoard("tb_logs")], 
-                    use_multiprocessing=True, 
-                    workers=16,
-                    batch_size=BATCH_SIZE,
-                    )
+tf.keras.utils.plot_model(model, show_shapes=True, expand_nested=True, dpi=150, to_file='violence_model_hr.png', rankdir='LR')
 
 
 
-model.save(f'PersonDetection_temp.h5')
+# history = model.fit(train_dataset, 
+#                     validation_data=val_dataset, 
+#                     epochs=6, 
+#                     callbacks=[acc_cp, loss_cp, early_stopper, reduce_lr_on_plataeu, tf.keras.callbacks.TensorBoard("tb_logs")], 
+#                     use_multiprocessing=True, 
+#                     workers=32,
+#                     batch_size=BATCH_SIZE,
+                    # )
 
-metrics = model.evaluate(val_dataset)
 
-model.save(f'Models/Violence_Acc_{metrics[1]}.h5')
 
-import pickle
-with open(f'history_{metrics[1]}.pkl', 'wb') as f:
-    pickle.dump(history.history, f)
+# model.save(f'PersonDetection_temp.h5')
+
+# metrics = model.evaluate(val_dataset)
+
+# model.save(f'Models/Violence_Acc_{metrics[1]}.h5')
+
+
