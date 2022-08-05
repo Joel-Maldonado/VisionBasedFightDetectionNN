@@ -1,2 +1,1 @@
 
-  txt = 'Number of People: '

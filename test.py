@@ -3,31 +3,31 @@ import pandas as pd
 import seaborn as sns
 
 
-accs = [77.0, 82.75, 87.25, 80.5]
-labels = ['ConvLSTM', 'C3D', 'Fusion (P3D)', 'My Model']
-# df = pd.DataFrame({'Accuracy': [their_acc, my_acc], 'Parameters': [their_params, my_params]})
+# accs = [77.0, 82.75, 87.25, 80.5]
+# labels = ['ConvLSTM', 'C3D', 'Fusion (P3D)', 'My Model']
+# # df = pd.DataFrame({'Accuracy': [their_acc, my_acc], 'Parameters': [their_params, my_params]})
 
-# df.T.plot.bar()
+# # df.T.plot.bar()
+# # plt.show()
+
+# bp = sns.barplot(x=labels, y=accs, palette='coolwarm')
+# bp.set_ylim(50, 100)
+# bp.set_xlabel('Model', fontsize=14)
+# bp.set_ylabel('Accuracy', fontsize=14)
+# bp.set_title('Violence Accuracy Comparison on RWF-2000', fontsize=18, y=1.15)
+# bp.set_yticklabels([f'{x}%' for x in bp.get_yticks()], size=14)
+# bp.set_xticklabels(labels, fontsize=12)
+# plt.tight_layout()
 # plt.show()
 
-bp = sns.barplot(x=labels, y=accs, palette='coolwarm')
-bp.set_ylim(50, 100)
-bp.set_xlabel('Model', fontsize=14)
-bp.set_ylabel('Accuracy', fontsize=14)
-bp.set_title('Violence Accuracy Comparison on RWF-2000', fontsize=18, y=1.15)
-bp.set_yticklabels([f'{x}%' for x in bp.get_yticks()], size=14)
-bp.set_xticklabels(labels, fontsize=12)
-plt.tight_layout()
-plt.show()
 
+train_acc = pd.read_csv(
+    '/u/jruiz_intern/jruiz/Downloads/DontDelete/ViolenceModel/Overfitting_300_epoch_Violence_model/run-train-tag-epoch_accuracy.csv'
+)
 
-# train_acc = pd.read_csv(
-#     '/u/jruiz_intern/jruiz/Downloads/DontDelete/ViolenceModel/ViolenceModel79/run-train-tag-epoch_accuracy.csv'
-# )
-
-# val_acc = pd.read_csv(
-#     '/u/jruiz_intern/jruiz/Downloads/DontDelete/ViolenceModel/ViolenceModel79/run-validation-tag-epoch_accuracy.csv',
-# )
+val_acc = pd.read_csv(
+    '/u/jruiz_intern/jruiz/Downloads/DontDelete/ViolenceModel/Overfitting_300_epoch_Violence_model/run-validation-tag-epoch_accuracy.csv'
+)
 
 # train_loss = pd.read_csv(
 #     '/u/jruiz_intern/jruiz/Downloads/DontDelete/BoundingBoxModel/run-train-tag-epoch_loss.csv'
@@ -37,13 +37,13 @@ plt.show()
 #     '/u/jruiz_intern/jruiz/Downloads/DontDelete/BoundingBoxModel/run-validation-tag-epoch_loss.csv',
 # )
 
-# plt.plot(train_loss['Step'], train_loss['Value'], label='Train')
-# plt.plot(val_loss['Step'], val_loss['Value'], label='Validation')
-# plt.title("Loss Over Epochs")
-# plt.xlabel("Epoch")
-# plt.ylabel("Loss")
-# plt.legend()
-# plt.show()
+plt.plot(train_acc['Step'], train_acc['Value'], label='Train')
+plt.plot(val_acc['Step'], val_acc['Value'], label='Validation')
+plt.title("Accuracy Over Epochs")
+plt.xlabel("Epoch")
+plt.ylabel("Accuracy")
+plt.legend()
+plt.show()
 
 # df = pd.read_csv(
 #     'final_results.csv'

@@ -97,7 +97,7 @@ val_dataset = tf.data.TFRecordDataset(VAL_RECORD_DIR)
 val_dataset = val_dataset.map(parse_tfrecord)
 val_dataset = val_dataset.map(preprocess)
 
-train_dataset = train_dataset.shuffle(buffer_size=1600, reshuffle_each_iteration=True)
+train_dataset = train_dataset.shuffle(buffer_size=400, reshuffle_each_iteration=True)
 
 
 train_dataset = train_dataset.batch(BATCH_SIZE)
@@ -105,16 +105,17 @@ val_dataset = val_dataset.batch(BATCH_SIZE)
 
 
 train_dataset = train_dataset.prefetch(AUTOTUNE)
+train_dataset = train_dataset.cache()
 
 
 # Model Creation
 def create_model():
     global ROTATION_MAX
 
-    LR = 0.001
+    LR = 0.01
     STRIDES = 1
-    ROTATION_MAX = 0.0 #0.1
-    DROPOUT = 0.5
+    ROTATION_MAX = 0.1 #0.1
+    DROPOUT = 0.3
 
     # dropout: 0.5
     # lr: 0.01
@@ -128,27 +129,27 @@ def create_model():
 
     model.add(layers.InputLayer(input_shape=(N_FRAMES, IMG_SIZE, IMG_SIZE, CHANNELS)))
 
-    model.add(layers.Conv3D(64, 3, strides=STRIDES, padding='same', activation='elu'))
+    model.add(layers.Conv3D(64, 3, strides=STRIDES, padding='same', activation='relu'))
     model.add(layers.MaxPooling3D(pool_size=2))
     model.add(layers.BatchNormalization())
 
-    model.add(layers.Conv3D(64, 3, strides=STRIDES, padding='same', activation='elu'))
+    model.add(layers.Conv3D(64, 3, strides=STRIDES, padding='same', activation='relu'))
     model.add(layers.MaxPooling3D(pool_size=2))
     model.add(layers.BatchNormalization())
 
-    model.add(layers.Conv3D(128, 3, strides=STRIDES, padding='same', activation='elu'))
+    model.add(layers.Conv3D(128, 3, strides=STRIDES, padding='same', activation='relu'))
     model.add(layers.MaxPooling3D(pool_size=2))
     model.add(layers.BatchNormalization())
 
-    model.add(layers.Conv3D(256, 3, strides=STRIDES, padding='same', activation='elu'))
+    model.add(layers.Conv3D(256, 3, strides=STRIDES, padding='same', activation='relu'))
     model.add(layers.MaxPooling3D(pool_size=2))
     model.add(layers.BatchNormalization())
 
 
-    # model.add(layers.GlobalAveragePooling3D())
-    model.add(layers.GlobalMaxPooling3D())
+    model.add(layers.GlobalAveragePooling3D())
+    # model.add(layers.GlobalMaxPooling3D())
 
-    model.add(layers.Dense(512, activation='elu'))
+    model.add(layers.Dense(512, activation='relu'))
     model.add(layers.Dropout(DROPOUT))
 
     # model.add(layers.Dense(256, activation='relu'))
