@@ -1,0 +1,261 @@
+Results summary
+Results in ./untitled_project
+Showing 400 best trials
+<keras_tuner.engine.objective.Objective object at 0x7fa37006dc10>
+Trial summary
+Hyperparameters:
+dropout: 0.5
+lr: 0.01
+rotation_max: 0.41013271765813386
+flat_pool: avg
+optimizer: adam
+Score: 0.8100000023841858
+Trial summary
+Hyperparameters:
+dropout: 0.5
+lr: 0.01
+rotation_max: 0.10147869530951548
+flat_pool: max
+optimizer: adam
+Score: 0.8050000071525574
+Trial summary
+Hyperparameters:
+dropout: 0.5
+lr: 0.006903696207277773
+rotation_max: 0.012697070938528418
+flat_pool: avg
+optimizer: nadam
+Score: 0.8050000071525574
+Trial summary
+Hyperparameters:
+dropout: 0.5
+lr: 0.01
+rotation_max: 0.04280528757118323
+flat_pool: avg
+optimizer: adam
+Score: 0.8050000071525574
+Trial summary
+Hyperparameters:
+dropout: 0.5
+lr: 0.01
+rotation_max: 0.16457651818760263
+flat_pool: avg
+optimizer: nadam
+Score: 0.8025000095367432
+Trial summary
+Hyperparameters:
+dropout: 0.10731196549128762
+lr: 0.01
+rotation_max: 0.0
+flat_pool: avg
+optimizer: adam
+Score: 0.800000011920929
+Trial summary
+Hyperparameters:
+dropout: 0.5
+lr: 0.007288128130730413
+rotation_max: 0.1888871760243998
+flat_pool: max
+optimizer: adam
+Score: 0.800000011920929
+Trial summary
+Hyperparameters:
+dropout: 0.5
+lr: 0.006977739454207569
+rotation_max: 0.004046965438922499
+flat_pool: max
+optimizer: adam
+Score: 0.800000011920929
+Trial summary
+Hyperparameters:
+dropout: 0.4614907943985159
+lr: 0.004575520170200982
+rotation_max: 0.34719900510255536
+flat_pool: max
+optimizer: nadam
+Score: 0.7975000143051147
+Trial summary
+Hyperparameters:
+dropout: 0.3704572784136854
+lr: 0.0007971031430463004
+rotation_max: 0.39651902210229656
+flat_pool: max
+optimizer: sgd
+Score: 0.7950000166893005
+Trial summary
+Hyperparameters:
+dropout: 0.0
+lr: 0.01
+rotation_max: 0.0
+flat_pool: avg
+optimizer: adam
+Score: 0.7925000190734863
+Trial summary
+Hyperparameters:
+dropout: 0.5
+lr: 0.01
+rotation_max: 0.3787351927911196
+flat_pool: avg
+optimizer: adam
+Score: 0.7875000238418579
+Trial summary
+Hyperparameters:
+dropout: 0.5
+lr: 0.008204528449030682
+rotation_max: 0.5
+flat_pool: avg
+optimizer: nadam
+Score: 0.7875000238418579
+Trial summary
+Hyperparameters:
+dropout: 0.5
+lr: 0.005281612498917602
+rotation_max: 0.20092236012168826
+flat_pool: avg
+optimizer: adam
+Score: 0.7825000286102295
+Trial summary
+Hyperparameters:
+dropout: 0.0
+lr: 0.0034374251894239696
+rotation_max: 0.45478607818408845
+flat_pool: avg
+optimizer: sgd
+Score: 0.7774999737739563
+Trial summary
+Hyperparameters:
+dropout: 0.5
+lr: 0.01
+rotation_max: 0.5
+flat_pool: avg
+optimizer: adam
+Score: 0.7774999737739563
+Trial summary
+Hyperparameters:
+dropout: 0.0
+lr: 0.01
+rotation_max: 0.3795941561667281
+flat_pool: avg
+optimizer: sgd
+Score: 0.7749999761581421
+Trial summary
+Hyperparameters:
+dropout: 0.5
+lr: 0.01
+rotation_max: 0.22940406971340238
+flat_pool: avg
+optimizer: sgd
+Score: 0.7724999785423279
+Trial summary
+Hyperparameters:
+dropout: 0.5
+lr: 0.006263888668272172
+rotation_max: 0.5
+flat_pool: avg
+optimizer: adam
+Score: 0.7724999785423279
+Trial summary
+Hyperparameters:
+dropout: 0.5
+lr: 0.01
+rotation_max: 0.0
+flat_pool: max
+optimizer: nadam
+Score: 0.7724999785423279
+Trial summary
+Hyperparameters:
+dropout: 0.0
+lr: 0.0001
+rotation_max: 0.04481776700361176
+flat_pool: avg
+optimizer: sgd
+Score: 0.7649999856948853
+Trial summary
+Hyperparameters:
+dropout: 0.3134458717669188
+lr: 0.0034668628820749927
+rotation_max: 0.214614917729386
+flat_pool: avg
+optimizer: sgd
+Score: 0.7649999856948853
+Trial summary
+Hyperparameters:
+dropout: 0.5
+lr: 0.0001
+rotation_max: 0.09701837090257927
+flat_pool: max
+optimizer: sgd
+Score: 0.762499988079071
+Trial summary
+Hyperparameters:
+dropout: 0.0
+lr: 0.01
+rotation_max: 0.0
+flat_pool: avg
+optimizer: sgd
+Score: 0.7549999952316284
+Trial summary
+Hyperparameters:
+dropout: 0.5
+lr: 0.0001
+rotation_max: 0.5
+flat_pool: avg
+optimizer: sgd
+Score: 0.7475000023841858
+Trial summary
+Hyperparameters:
+dropout: 0.32649839999596103
+lr: 0.00914163147319622
+rotation_max: 0.21003308280276092
+flat_pool: avg
+optimizer: adam
+Score: 0.7425000071525574
+Trial summary
+Hyperparameters:
+dropout: 0.5
+lr: 0.0001
+rotation_max: 0.10352967299481179
+flat_pool: avg
+optimizer: adam
+Score: 0.7400000095367432
+Trial summary
+Hyperparameters:
+dropout: 0.0
+lr: 0.0001
+rotation_max: 0.5
+flat_pool: flatten
+optimizer: sgd
+Score: 0.7275000214576721
+Trial summary
+Hyperparameters:
+dropout: 0.0
+lr: 0.0001
+rotation_max: 0.5
+flat_pool: avg
+optimizer: adam
+Score: 0.7074999809265137
+Trial summary
+Hyperparameters:
+dropout: 0.5
+lr: 0.01
+rotation_max: 0.19203284382222058
+flat_pool: max
+optimizer: adam
+Score: 0.6324999928474426
+Trial summary
+Hyperparameters:
+dropout: 0.5
+lr: 0.01
+rotation_max: 0.0
+flat_pool: flatten
+optimizer: adam
+Score: 0.5774999856948853
+Trial summary
+Hyperparameters:
+dropout: 0.5
+lr: 0.01
+rotation_max: 0.5
+flat_pool: flatten
+optimizer: nadam
+Score: 0.574999988079071
+None

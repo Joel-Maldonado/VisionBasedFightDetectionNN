@@ -1,149 +1,185 @@
-import tensorflow as tf
-import cv2
-import numpy as np
-import os
+import matplotlib.pyplot as plt
+import pandas as pd
+import seaborn as sns
 
 
-VIDEO = '/u/jruiz_intern/jruiz/Datasets/RWF/val/Fight/6C7PHYI3L9.avi'
-# VIDEO = '/u/jruiz_intern/jruiz/Datasets/RWF/train/Fight/4Y23PRE2VD.avi'
-# VIDEO = '/u/jruiz_intern/jruiz/Datasets/fight-detection-surv-dataset-master/fight/8RFO63636K.avi'
-# VIDEO = '/u/jruiz_intern/jruiz/Downloads/DontDelete/9AB9HPN0N0_CUT.mp4'
-# VIDEO = '/u/jruiz_intern/jruiz/Datasets/RWF/train/NonFight/0UHSN1QYG0.avi'
-# VIDEO = '/u/jruiz_intern/jruiz/Datasets/RWF/val/NonFight/80N1GRREHM.avi'
+accs = [77.0, 82.75, 87.25, 80.5]
+labels = ['ConvLSTM', 'C3D', 'Fusion (P3D)', 'My Model']
+# df = pd.DataFrame({'Accuracy': [their_acc, my_acc], 'Parameters': [their_params, my_params]})
 
-VIOLENCE_MODEL_PATH = 'Models/Violence_Acc_0.7649999856948853.h5'
-BOX_MODEL_PATH = 'Models/Bounding_Box_GIoU_0.01907881535589695.h5'
+# df.T.plot.bar()
+# plt.show()
 
-# Constants
-IMG_SIZE = 224
-N_FRAMES = 20
+bp = sns.barplot(x=labels, y=accs, palette='coolwarm')
+bp.set_ylim(50, 100)
+bp.set_xlabel('Model', fontsize=14)
+bp.set_ylabel('Accuracy', fontsize=14)
+bp.set_title('Violence Accuracy Comparison on RWF-2000', fontsize=18, y=1.15)
+bp.set_yticklabels([f'{x}%' for x in bp.get_yticks()], size=14)
+bp.set_xticklabels(labels, fontsize=12)
+plt.tight_layout()
+plt.show()
 
-class RandomFlipVideo(tf.keras.layers.Layer):
-  def __init__(self, **kwargs):
-    super(RandomFlipVideo, self).__init__()
 
-  @tf.function
-  def call(self, inputs):
-    # if tf.random.uniform(()) > 0.5:
-    #   return tf.map_fn(lambda x: tf.image.flip_left_right(x), inputs)
-    return inputs
+# train_acc = pd.read_csv(
+#     '/u/jruiz_intern/jruiz/Downloads/DontDelete/ViolenceModel/ViolenceModel79/run-train-tag-epoch_accuracy.csv'
+# )
+
+# val_acc = pd.read_csv(
+#     '/u/jruiz_intern/jruiz/Downloads/DontDelete/ViolenceModel/ViolenceModel79/run-validation-tag-epoch_accuracy.csv',
+# )
+
+# train_loss = pd.read_csv(
+#     '/u/jruiz_intern/jruiz/Downloads/DontDelete/BoundingBoxModel/run-train-tag-epoch_loss.csv'
+# )
+
+# val_loss = pd.read_csv(
+#     '/u/jruiz_intern/jruiz/Downloads/DontDelete/BoundingBoxModel/run-validation-tag-epoch_loss.csv',
+# )
+
+# plt.plot(train_loss['Step'], train_loss['Value'], label='Train')
+# plt.plot(val_loss['Step'], val_loss['Value'], label='Validation')
+# plt.title("Loss Over Epochs")
+# plt.xlabel("Epoch")
+# plt.ylabel("Loss")
+# plt.legend()
+# plt.show()
+
+# df = pd.read_csv(
+#     'final_results.csv'
+# )
+
+# # Use seaborn to compare the accuracy and number of parameters for each model
+# sns.set(style="whitegrid")
+# # sns.pairplot(df, hue="model", vars=["acc", "params"])
+# sns.barplot(x="model", y="acc", data=df)
+
+
+# plt.show()
+
+
+
+
+
+# import tensorflow as tf
+
+# class RandomFlipVideo(tf.keras.layers.Layer):
+#   def __init__(self, **kwargs):
+#     super(RandomFlipVideo, self).__init__()
+
+#   @tf.function
+#   def call(self, inputs):
+#     return inputs
   
-class RandomRotationVideo(tf.keras.layers.Layer):
-  def __init__(self, max_rotation=0.3, **kwargs):
-    super(RandomRotationVideo, self).__init__()
-    self.max_rotation = max_rotation
+# class RandomRotationVideo(tf.keras.layers.Layer):
+#   def __init__(self, max_rotation=0.3, **kwargs):
+#     super(RandomRotationVideo, self).__init__()
 
-  @tf.function
-  def call(self, inputs):
-    # random_factor = tf.random.uniform(()) * self.max_rotation * 2 - self.max_rotation
-    # return tf.map_fn(lambda x: tfa.image.rotate(x, random_factor), inputs)
-    return inputs
+#   @tf.function
+#   def call(self, inputs):
+#     return inputs
+
+# model = tf.keras.models.load_model('Models/Violence_Acc_0.7350000143051147.h5', custom_objects={'RandomFlipVideo': RandomFlipVideo, 'RandomRotationVideo': RandomRotationVideo})
+
+# model.summary()
+
+# import cv2
+# import numpy as np
+# import pandas as pd
+# import os
+# import tensorflow as tf
+
+# LABEL_DIR = 'Data/violence_bounding_box_labels.csv'
+# DATA_DIR = 'Data/BoundingImages'
+
+# labels = pd.read_csv(LABEL_DIR)
+# labels['Path'] = labels['ImageID'].apply(lambda x: os.path.join(DATA_DIR, x))
+
+# IMG_PATH = os.path.join(DATA_DIR, '1zcOeIvnGL97tfvK.avi_frame3.jpg')
+
+# # Processing Functions
+# @tf.function
+# def preprocess(image, labels):
+#     image = tf.image.decode_jpeg(image, channels=3)
+#     # image = tf.image.resize(image, (IMG_SIZE, IMG_SIZE))
+#     # image = image / 255.0
+
+#     return image, labels# * [image.shape[0] / image.shape[1], 1, image.shape[0] / image.shape[1], 1]
+
+# @tf.function
+# def load_and_preprocess_image(img_path, labels):
+#     image = tf.io.read_file(img_path)
+#     return preprocess(image, labels)
+
+# # Data
+# # paths = labels['Path']
+# # df = labels[['YMin','XMin', 'YMax', 'XMax']]
+
+# img_label = labels.loc[labels['Path'] == IMG_PATH]
+
+# y1, x1, y2, x2 = img_label[['YMin','XMin', 'YMax', 'XMax']].values[0]
+
+# image = cv2.imread(IMG_PATH)
+# h, w = image.shape[:2]
+# image = cv2.resize(image, (w * 2, h * 2))
+
+# h, w = image.shape[:2]
+
+# y1 = int(y1 * h)
+# x1 = int(x1 * w)
+# y2 = int(y2 * h)
+# x2 = int(x2 * w)
+
+# cv2.putText(image, 'Violence Detected: ', (15, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+# cv2.putText(image, '92%', (315, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+
+# cv2.putText(image, 'Weapons: ', (15, 70), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 2)
+# cv2.putText(image, 'None', (170, 70), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+
+# cv2.putText(image, 'Number Of People Involved:', (15, 110), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 2)
+# cv2.putText(image, '2', (465, 110), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+
+# cv2.putText(image, 'Location: ', (15, 150), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 2)
+# cv2.putText(image, '1234 Park Street', (160, 150), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+
+
+
+# cv2.rectangle(image, (x1, y1), (x2, y2), (0, 0, 255), 2)
+
+
+
+# cv2.imshow('image', image)
+# cv2.waitKey(0)
+
+
+# # Creating Dataset
+# path_ds = tf.data.Dataset.from_tensor_slices(paths.to_numpy())
+
+# label_ds = tf.data.Dataset.from_tensor_slices(df.to_numpy())
+
+# image_label_ds = tf.data.Dataset.zip((path_ds, label_ds))
+
+# image_label_ds = image_label_ds.map(load_and_preprocess_image)
+# image_label_ds = image_label_ds.shuffle(buffer_size=1000, reshuffle_each_iteration=False)
+
+
+# for image, label in image_label_ds.take(5):
+#     y1, x1, y2, x2 = label.numpy()
+#     image = image.numpy()
+#     image = image.astype(np.uint8)
+#     image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+#     h, w = image.shape[:2]
+
+#     y1 = int(y1 * h)
+#     x1 = int(x1 * w)
+#     y2 = int(y2 * h)
+#     x2 = int(x2 * w)
+
+#     cv2.putText(image, 'Violence Detected...', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 3)
+
+#     cv2.rectangle(image, (x1, y1), (x2, y2), (0, 255, 0), 2)
+
     
-  def get_config(self):
-    config = super().get_config().copy()
-    return config
 
-def get_unaltered_frames(cap):
-    frames = []
-    ret, frame = cap.read()
-    while ret:
-        frames.append(frame)
-        ret, frame = cap.read()
-    return frames
-
-def getOpticalFlow(video):
-    gray_videos = []
-    for img in video:
-        gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
-        gray_videos.append(np.reshape(gray,(IMG_SIZE, IMG_SIZE, 1)))
-        
-    flows = []
-    for i in range(0, len(video)-1):
-        flow = cv2.calcOpticalFlowFarneback(gray_videos[i], gray_videos[i+1], None, 0.5, 3, 15, 3, 5, 1.2, cv2.OPTFLOW_FARNEBACK_GAUSSIAN)
-        
-        # Subtract mean
-        flow[..., 0] -= np.mean(flow[..., 0])
-        flow[..., 1] -= np.mean(flow[..., 1])
-
-        # Normalize
-        flow[..., 0] = cv2.normalize(flow[..., 0], None, 0, 255, cv2.NORM_MINMAX)
-        flow[..., 1] = cv2.normalize(flow[..., 1], None, 0, 255, cv2.NORM_MINMAX)
-
-        flows.append(flow)
-
-    # Padding last frame
-    flows.append(np.zeros((IMG_SIZE, IMG_SIZE, 2)))
-
-    return np.array(flows, dtype=np.float32)
-
-
-def get_rgb_opt_video(file_path, resize=(IMG_SIZE, IMG_SIZE)):
-    cap = cv2.VideoCapture(file_path)
-    frames = []
-
-    ret, frame = cap.read()
-    while ret:
-        frame = cv2.resize(frame, resize, interpolation=cv2.INTER_AREA)
-        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        frame = np.reshape(frame, (IMG_SIZE, IMG_SIZE, 3))
-        frames.append(frame)
-        ret, frame = cap.read()
-
-    frames = np.array(frames)
-    cap.release()
-            
-    flows = getOpticalFlow(frames)
-    
-    result = np.zeros((len(flows), IMG_SIZE, IMG_SIZE, frames.shape[-1] + flows.shape[-1]))
-    result[..., :3] = frames
-    result[..., 3:] = flows
-    
-    return result
-
-cap = cv2.VideoCapture(VIDEO)
-unaltered_frames = get_unaltered_frames(cap)
-
-fps = cap.get(cv2.CAP_PROP_FPS)
-h, w = unaltered_frames[0].shape[:2]
-
-cap.release()
-
-
-extracted_full = get_rgb_opt_video(VIDEO) / 255.0
-extracted_cut = np.array([extracted_full[int(i)] for i in np.linspace(0, len(extracted_full)-1, N_FRAMES)])
-
-violent_model = tf.keras.models.load_model(VIOLENCE_MODEL_PATH, custom_objects={'RandomFlipVideo': RandomFlipVideo, 'RandomRotationVideo': RandomRotationVideo})
-box_model = tf.keras.models.load_model(BOX_MODEL_PATH, compile=False)
-
-
-violent_pred = violent_model.predict(tf.expand_dims(extracted_cut, axis=0))[0, 0]
-
-predicted_frames = []
-for unaltered_frame, extracted_frame in zip(unaltered_frames, extracted_full):
-    formatted = cv2.cvtColor(tf.cast(extracted_frame[..., :3] * 255.0, np.uint8).numpy(), cv2.COLOR_RGB2BGR)
-    gray = tf.image.rgb_to_grayscale(extracted_frame[..., :3])
-    box_pred = box_model.predict(tf.expand_dims(gray, axis=0))[0]
-
-    if violent_pred > 0.5:
-        y1, x1, y2, x2 = box_pred
-
-        y1 = int(y1 * h)
-        x1 = int(x1 * w)
-        y2 = int(y2 * h)
-        x2 = int(x2 * w)
-
-
-        cv2.rectangle(unaltered_frame, (x1, y1), (x2, y2), (0, 0, 255), 2)
-
-    violence_text = f"Violence: {(violent_pred * 100):.2f}%"
-    cv2.putText(unaltered_frame, violence_text, (0, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-    
-    predicted_frames.append(unaltered_frame)
-
-
-out_name = f"/u/jruiz_intern/jruiz/Downloads/DontDelete/PredictDump/{os.path.basename(VIDEO).split('.')[0]}_LABELED.avi"
-
-out = cv2.VideoWriter(out_name, cv2.VideoWriter_fourcc(*'mp4v'), fps, (w, h))
-for extracted_frame in predicted_frames:
-    out.write(extracted_frame)
-out.release()
+#     cv2.imshow('image', image)
+#     cv2.waitKey(0)

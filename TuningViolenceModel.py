@@ -25,7 +25,7 @@ N_FRAMES = 20
 BATCH_SIZE = 16
 CHANNELS = 5
 AUTOTUNE = tf.data.experimental.AUTOTUNE
-ROTATION_MAX = 0.0
+ROTATION_MAX = 0.1
 REDUCE_QUALITY = False
 
 
@@ -58,8 +58,6 @@ def random_rotation(video, label):
   return tf.map_fn(lambda x: tfa.image.rotate(x, random_factor), video), label
   
 def random_reduce_quality(video, label):
-  if REDUCE_QUALITY == False:
-    return video, label
   factor = tf.random.uniform(()) * 1.5
   return tf.map_fn(
     lambda x: tf.image.resize(tf.image.resize(x, (int(IMG_SIZE / factor), int(IMG_SIZE / factor))), (IMG_SIZE, IMG_SIZE)), video), label
@@ -69,7 +67,6 @@ train_dataset = train_dataset.map(parse_tfrecord)
 train_dataset = train_dataset.map(preprocess)
 train_dataset = train_dataset.map(random_flip)
 train_dataset = train_dataset.map(random_rotation)
-train_dataset = train_dataset.map(random_reduce_quality)
 
 val_dataset = tf.data.TFRecordDataset(VAL_RECORD_DIR)
 val_dataset = val_dataset.map(parse_tfrecord)
@@ -84,60 +81,17 @@ val_dataset = val_dataset.batch(BATCH_SIZE)
 
 train_dataset = train_dataset.prefetch(AUTOTUNE)
 
-class RandomFlipVideo(tf.keras.layers.Layer):
-  def __init__(self, **kwargs):
-    super(RandomFlipVideo, self).__init__()
-
-  @tf.function
-  def call(self, inputs):
-    if tf.random.uniform(()) > 0.5:
-      return tf.map_fn(lambda x: tf.image.flip_left_right(x), inputs)
-    return inputs
-  
-class RandomRotationVideo(tf.keras.layers.Layer):
-  def __init__(self, max_rotation=0.3, **kwargs):
-    super(RandomRotationVideo, self).__init__()
-    self.max_rotation = max_rotation
-
-  @tf.function
-  def call(self, inputs):
-    random_factor = tf.random.uniform(()) * self.max_rotation * 2 - self.max_rotation
-    return tf.map_fn(lambda x: tfa.image.rotate(x, random_factor), inputs)
-    
-  def get_config(self):
-    config = super().get_config().copy()
-    return config
-
-class RandomBlurVideo(tf.keras.layers.Layer):
-  def __init__(self, max_shift=10, **kwargs):
-    super(RandomBlurVideo, self).__init__()
-    self.max_shift = max_shift
-
-  @tf.function
-  def call(self, inputs):
-    random_factor = tf.random.uniform(()) * self.max_shift + 1
-    return tf.map_fn(lambda x: tfa.image.gaussian_filter2d(x, (random_factor, random_factor)), inputs)
-  
-  def get_config(self):
-    config = super().get_config().copy()
-    return config
 
 # Model Creation
 def create_model(hp):
   with strategy.scope():
-    global ROTATION_MAX, REDUCE_QUALITY
+    global ROTATION_MAX
 
-    CONV_NEURONS = hp.Int('conv_neurons', 4, 64)
     DROPOUT = hp.Float('dropout', 0.0, 0.5)
-    LR = hp.Float('lr', 0.0001, 0.006)
+    LR = hp.Float('lr', 0.0001, 0.01)
     ROTATION_MAX = hp.Float('rotation_max', 0.0, 0.5)
-    DENSE_UNITS = hp.Int('dense_units', 4, 128)
-    N_CONV_LAYERS = hp.Int('n_conv_layers', 2, 4)
-    N_DENSE_LAYERS = 1
     STRIDES = 1
-    BATCH_NORM = hp.Boolean('batch_norm?')
-    DENSE_BATCH_NORM_MODE = hp.Int('dense_batch_norm_mode', 0, 2)
-    REDUCE_QUALITY = hp.Boolean('reduce_quality?')
+    FLAT_POOL = hp.Choice('flat_pool', ['avg', 'max', 'flatten'])
 
     optimizers = {
       'adam': tf.keras.optimizers.Adam(LR),
@@ -146,42 +100,36 @@ def create_model(hp):
     }
     optimizer_str = hp.Choice('optimizer', ['adam', 'nadam', 'sgd'])
 
-    model = tf.keras.models.Sequential()
 
+    model = tf.keras.models.Sequential()
 
     model.add(layers.InputLayer(input_shape=(N_FRAMES, IMG_SIZE, IMG_SIZE, CHANNELS)))
 
-    # Add image augmentation layers 
-    # model.add(RandomFlipVideo())
-    # model.add(RandomRotationVideo(ROTATION_MAX))
-    # model.add(RandomBlurVideo(10))
-    
-    model.add(layers.Conv3D(CONV_NEURONS, (3, 3, 3), strides=STRIDES, activation='relu', kernel_initializer='he_normal', padding='same'))
-    model.add(layers.Conv3D(CONV_NEURONS, (3, 3, 3), strides=STRIDES, activation='relu', kernel_initializer='he_normal', padding='same'))
-    model.add(layers.MaxPooling3D())
-    if BATCH_NORM:
-        model.add(layers.BatchNormalization())
+    model.add(layers.Conv3D(64, 3, strides=STRIDES, padding='same', activation='relu'))
+    model.add(layers.MaxPooling3D(pool_size=2))
+    model.add(layers.BatchNormalization())
 
-    for i in range(N_CONV_LAYERS - 1):
-      model.add(layers.Conv3D(CONV_NEURONS, (3, 3, 3), activation='relu', kernel_initializer='he_normal', padding='same'))
-      model.add(layers.Conv3D(CONV_NEURONS, (3, 3, 3), activation='relu', kernel_initializer='he_normal', padding='same'))
-      model.add(layers.MaxPooling3D())
-      if BATCH_NORM:
-        model.add(layers.BatchNormalization())
+    model.add(layers.Conv3D(64, 3, strides=STRIDES, padding='same', activation='relu'))
+    model.add(layers.MaxPooling3D(pool_size=2))
+    model.add(layers.BatchNormalization())
 
-    model.add(layers.Flatten())
+    model.add(layers.Conv3D(128, 3, strides=STRIDES, padding='same', activation='relu'))
+    model.add(layers.MaxPooling3D(pool_size=2))
+    model.add(layers.BatchNormalization())
 
-    for i in range(N_DENSE_LAYERS):
-      model.add(layers.Dense(DENSE_UNITS, activation='relu'))
-      model.add(layers.Dropout(DROPOUT))
-      if DENSE_BATCH_NORM_MODE == 0:
-        model.add(layers.BatchNormalization())
-      elif DENSE_BATCH_NORM_MODE == 1:
-        model.add(layers.Dropout(DROPOUT))
-      else:
-        model.add(layers.Dropout(DROPOUT))
-        model.add(layers.BatchNormalization())
+    model.add(layers.Conv3D(256, 3, strides=STRIDES, padding='same', activation='relu'))
+    model.add(layers.MaxPooling3D(pool_size=2))
+    model.add(layers.BatchNormalization())
 
+    if FLAT_POOL == 'avg':
+      model.add(layers.GlobalAveragePooling3D())
+    elif FLAT_POOL == 'max':
+      model.add(layers.GlobalMaxPooling3D())
+    else:
+      model.add(layers.Flatten())
+
+    model.add(layers.Dense(512, activation='relu'))
+    model.add(layers.Dropout(DROPOUT))
 
     model.add(layers.Dense(1, activation='sigmoid'))
 
@@ -201,14 +149,14 @@ reduce_lr_on_plataeu = tf.keras.callbacks.ReduceLROnPlateau(monitor='val_accurac
 tuner = BayesianOptimization(
   create_model,
   objective='val_accuracy',
-  max_trials=25,
+  max_trials=32,
   overwrite=True,
 )
 
 tuner.search(
   train_dataset, 
   validation_data=val_dataset, 
-  epochs=20,
+  epochs=25,
   callbacks=[early_stopper, reduce_lr_on_plataeu], 
   use_multiprocessing=True, 
   workers=32,
