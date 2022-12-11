@@ -1,8 +1,0 @@
-model,acc,params
-ConvLSTM,77.00,47.4
-C3D,82.75,94.8
-I3D(RGB),85.75,12.3
-I3D(Flow),75.50,12.3
-I3D(TwoStream),81.50,24.6
-Theirs,87.25,0.27
-My Model,79.5,1.35

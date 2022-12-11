@@ -9,7 +9,7 @@ N_FRAMES = 20
 IMG_SIZE = 224
 CHANNELS = 5
 
-DIR = '/u/jruiz_intern/jruiz/Datasets/RWF/train'
+DIR = '~/Datasets/RWF'
 
 V_DIR = os.path.join(DIR, 'Fight')
 NV_DIR = os.path.join(DIR, 'NonFight')

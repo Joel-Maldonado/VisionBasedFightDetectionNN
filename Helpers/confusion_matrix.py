@@ -7,8 +7,8 @@ import seaborn as sns
 TRAIN_RECORD_DIR = 'violence_rgb_opt_train.tfrecord'
 VAL_RECORD_DIR = 'violence_rgb_opt_val.tfrecord'
 
-VIOLENCE_MODEL_PATH = 'Models/Violence_Acc_0.7950000166893005.h5'
-BOX_MODEL_PATH = 'Models/Bounding_Box_GIoU_0.01907881535589695.h5'
+VIOLENCE_MODEL_PATH = 'MODEL_SAVE_PATH'
+BOX_MODEL_PATH = 'MODEL_SAVE_PATH'
 
 # Constants
 SEED = 435
@@ -17,22 +17,6 @@ N_FRAMES = 20
 BATCH_SIZE = 16
 CHANNELS = 5
 AUTOTUNE = tf.data.experimental.AUTOTUNE
-
-# class RandomFlipVideo(tf.keras.layers.Layer):
-#   def __init__(self, **kwargs):
-#     super(RandomFlipVideo, self).__init__()
-
-#   @tf.function
-#   def call(self, inputs):
-#     return inputs
-  
-# class RandomRotationVideo(tf.keras.layers.Layer):
-#   def __init__(self, max_rotation=0.3, **kwargs):
-#     super(RandomRotationVideo, self).__init__()
-
-#   @tf.function
-#   def call(self, inputs):
-#     return inputs
 
 def parse_tfrecord(example):
   features = {
@@ -69,15 +53,8 @@ for video, label in val_dataset:
   preds.append(pred.numpy())
 
   count += 1
-  print(f"{count}/400")
-
-
-print(labels)
-print(preds)
 
 cm = confusion_matrix(labels, preds)
-print(cm)
-
 
 group_names = ['True Neg', 'False Pos', 'False Neg', 'True Pos']
 group_counts = ['{0:0.0f}'.format(x) for x in cm.flatten()]
