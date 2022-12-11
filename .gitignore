@@ -128,12 +128,8 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-Data/
-Models/
 Checkpoints/
 Predictions/
-tb_logs/
-untitled_project/
 
 *.tfrecord
 *.h5
