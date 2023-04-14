@@ -1,4 +1,4 @@
-# Vision-Based Violent Scene Detection for Use in Surveillance Cameras
+# Vision-Based Fight Detection for Use in Surveillance Cameras
 
 Made for ASE Saturday Academy Symposium 2022
 
