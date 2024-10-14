@@ -2,6 +2,10 @@
 
 A deep learning model built using TensorFlow for detecting violent scenes in surveillance camera footage. The model takes in a video and gives a rating of how violent it thinks it is as a percentage, along with a bounding box over the presumed fight and the people in it.
 
+The training data used for this project was the RWF-2000 dataset.
+
+https://arxiv.org/pdf/1911.05913v3
+
 This project was completed as part of the <b>Programming for Social Good</b> internship at Saturday Academy, which aims to use technology to create positive social impact. By developing a model that can quickly detect violent scenes in surveillance footage, this project has the potential to improve public safety and help law enforcement respond to incidents more effectively.
 
 This project was presented as part of the ASE Saturday Academy Symposium 2022. You can watch the presentation on YouTube here.
