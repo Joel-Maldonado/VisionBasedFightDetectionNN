@@ -2,12 +2,20 @@
 
 A deep learning model built using TensorFlow for detecting violent scenes in surveillance camera footage. The model analyzes video input and provides:
 
-- A violence rating as a percentage
-- A bounding box highlighting the presumed fight and involved individuals
+- Clip-level violence score (0–100%)
+- Per-frame bounding box localizing the suspected altercation
+
+## Environment
+
+- Python 3.9+ is recommended (project developed with Python 3.9).
+
+## Model Weights
+
+This repository includes training and inference scripts, example data, and plots. Pretrained model weights and large training artifacts are not included in the repository. To reproduce results, download the dataset yourself, use the provided scripts to generate TFRecords and train models locally, then point the helper scripts to your resulting checkpoints.
 
 ## Dataset
 
-This project utilizes the [RWF-2000 dataset](https://arxiv.org/pdf/1911.05913v3) for training.
+This project utilizes the [RWF-2000 dataset](https://arxiv.org/pdf/1911.05913v3) for training. Reach out to the authors for access.
 
 ## Project Background
 
