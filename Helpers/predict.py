@@ -1,5 +1,4 @@
 import os
-from tkinter import W
 import numpy as np
 import tensorflow as tf
 import cv2
@@ -138,7 +137,7 @@ box_model = tf.keras.models.load_model(BOX_MODEL_PATH, compile=False)
 violent_pred = violent_model.predict(
     tf.expand_dims(tf.cast(predict_frames, tf.float32) / 255.0, 0)
 )[0, 0]
-violent_pred = 0.94
+# violent_pred = 0.94  # Debug override disabled
 violent_binary = tf.round(violent_pred)
 violent_text = "Violence Detected!" if violent_binary else "No Violence"
 
